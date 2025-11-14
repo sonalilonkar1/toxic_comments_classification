@@ -1,0 +1,16 @@
+numpy
+pandas
+scikit-learn
+xgboost
+matplotlib
+seaborn
+tqdm
+joblib
+imbalanced-learn
+scipy
+shap
+transformers
+accelerate
+pyyaml
+kaggle
+# NOTE: install PyTorch separately (see scripts/02_install_torch_macos.sh)

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+artifacts/
+reports/figures/*.png
+reports/tables/*.csv
+kaggle.json
+.ipynb_checkpoints/
