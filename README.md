@@ -1,91 +1,104 @@
-# Toxic Comment Classification
+# Toxic Comment Classification (Starter Scaffold)
 
-Lightweight project scaffold for experiments and coursework (CMPE-255).
+This repository now contains a minimal, data-ready scaffold for the Jigsaw
+toxic-comment dataset. The focus is strictly on:
 
-This repository contains code, notebooks, and helper scripts to set up a Python
-environment, download the Kaggle dataset, and install macOS-specific PyTorch
-builds. The `scripts/` folder contains convenient shell scripts to automate
-common setup steps.
+- provisioning a reproducible Python environment,
+- downloading and storing the Kaggle data locally, and
+- generating chronological fold splits for future experiments.
 
-**Prerequisites**
-- Python 3.8+ or compatible (recommended: use the provided environment scripts)
-- `git`, `curl`/`wget`, and optionally `conda` or `venv`
-- Kaggle account and API token (if you want to download the dataset via the
-	Kaggle CLI)
+All training pipelines, notebooks, and model code were intentionally removed to
+keep the repo lightweight. (A full copy of the previous project state lives
+outside this repository.)
 
-**Quick Setup (recommended: use scripts)**
+## Prerequisites
 
-1. Make the scripts executable (one-time):
+- Python 3.8+ with either Conda/Miniforge or the ability to create a virtualenv
+- `git`, `curl`/`wget`, and the Kaggle CLI (`pip install kaggle`)
+- Kaggle API token saved as `~/.kaggle/kaggle.json` or copied into the project
+	root
 
-```bash
-chmod +x scripts/*.sh
-```
+## Quick Start
 
-2a. Create a macOS Conda environment (recommended on macOS):
+1. **Bootstrap everything (recommended):**
 
-```bash
-./scripts/01_make_env_macos.sh
-# then activate it, e.g. `conda activate toxic-comments` (name shown by script)
-```
+	 ```bash
+	 bash scripts/00_bootstrap_project.sh
+	 ```
 
-2b. Or create a plain Python venv (cross-platform):
+	 Use `--skip-env`, `--skip-torch`, or `--skip-data` to turn off individual
+	 steps if you rerun the bootstrapper later.
 
-```bash
-./scripts/01_make_venv.sh
-# then activate it, e.g. `source .venv/bin/activate`
-```
+2. **Activate the environment:**
 
-3. Install Python dependencies:
+	 - If Conda: `conda activate toxbench`
+	 - If the script created `.venv/`: `source .venv/bin/activate`
 
-```bash
-pip install -r requirements.txt
-```
+	 > Tip: `scripts/run_python.sh <args>` is a safe wrapper that automatically
+	 > targets whichever environment the bootstrapper created.
 
-4. (Optional) Install PyTorch for macOS-specific builds:
+3. **Download the Kaggle dataset manually (optional):**
 
-```bash
-./scripts/02_install_torch_macos.sh
-```
+	 ```bash
+	 bash scripts/02_download_kaggle.sh
+	 ```
 
-5. (Optional) Download dataset from Kaggle (requires `~/.kaggle/kaggle.json`):
+	 This step is already part of the bootstrapper, but the standalone command is
+	 handy if you need to refresh the data only.
 
-```bash
-./scripts/02_download_kaggle.sh
-```
+4. **Generate chronological folds:**
 
-**Scripts in `scripts/`**
-- `01_make_env_macos.sh`: Create a Conda environment tailored for macOS.
-- `01_make_venv.sh`: Create a local Python virtual environment and install
-	`pip` requirements into it.
-- `02_download_kaggle.sh`: Use the Kaggle CLI to download the dataset(s).
-	Ensure your Kaggle API credentials are available at `~/.kaggle/kaggle.json`.
-- `02_install_torch_macos.sh`: Install a macOS-compatible PyTorch wheel (useful
-	for Apple Silicon / macOS-specific installs).
+	 ```bash
+	 ./scripts/run_python.sh -m src.cli.make_splits --folds 3
+	 ```
 
-**Usage**
-- Notebooks are under `notebooks/` — open with Jupyter or VS Code Interactive
-	window.
-- Source code lives in `src/` — import modules or run scripts from there.
+	 This reads `data/raw/train.csv` and writes JSON index files to
+	 `data/splits/`.
 
-Example: open the main notebook
+## What's in `scripts/`
 
-```bash
-jupyter notebook notebooks/
-```
+- `00_bootstrap_project.sh` – orchestrates env creation, optional PyTorch
+	install, and data download.
+- `01_make_env_macos.sh` – idempotent macOS-friendly environment creator
+	(prefers Conda, falls back to `python -m venv`).
+- `02_install_torch_macos.sh` – installs the right PyTorch build for Apple
+	Silicon/Intel macOS; skip if you only need the data utilities.
+- `02_download_kaggle.sh` – wraps the Kaggle CLI download and unzip workflow,
+	honoring a repo-local `kaggle.json` when present.
+- `run_python.sh` – helper to execute any Python command inside the managed
+	environment (`conda run` or `.venv`).
 
-**Kaggle credentials**
-Place your `kaggle.json` (from https://www.kaggle.com/) in `~/.kaggle/` or set
-the environment variables `KAGGLE_USERNAME` and `KAGGLE_KEY` before running the
-download script.
+## Minimal Source Layout
 
-**Troubleshooting**
-- If a script fails with permissions, re-run `chmod +x scripts/*.sh`.
-- For macOS-specific PyTorch issues, confirm Python version and follow PyTorch
-	official install instructions: https://pytorch.org/get-started/locally/
+The `src/` tree currently exposes only two CLI entry points:
 
-**Next steps**
-- Run the environment/script suited to your OS and follow the notebooks to
-	preprocess data and run experiments.
+- `src/cli/download_data.py` – logic shared by the download script
+- `src/cli/make_splits.py` – chronological fold generation
+
+Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
+`src/utils`) remain as placeholders so the directory structure is ready when you
+add new functionality. They intentionally do **not** contain any implementation
+yet.
+
+## Data Locations
+
+- `data/raw/` – Kaggle CSVs (`train.csv`, `test.csv`, etc.) once downloaded
+- `data/splits/` – JSON index files produced by the split CLI
+- `artifacts/` – currently empty; reserved for future experiment outputs
+
+Raw datasets can be large; keep them out of Git unless absolutely required. Use
+`.gitignore` (already configured) to avoid accidental commits.
+
+## Next Steps
+
+- Extend `src/data/` with normalization utilities or feature builders.
+- Implement training/inference modules under `src/models/` and
+	`src/pipeline/` when ready.
+- Add notebooks or reports back once you start experimentation (they were
+	removed from this slim scaffold).
+
+Until then, this repo is deliberately lean: it gets you an environment, the
+datasets, and deterministic splits—nothing more.
 
 ---
 
