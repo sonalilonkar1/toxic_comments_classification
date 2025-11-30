@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 data/
+experiments
 artifacts/
 reports/figures/*.png
 reports/tables/*.csv
