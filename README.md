@@ -1,22 +1,26 @@
-# Toxic Comment Classification (Starter Scaffold)
+# Toxic Comment Classification
 
-This repository now contains a minimal, data-ready scaffold for the Jigsaw
-toxic-comment dataset. The focus is strictly on:
+This repository now contains a reproducible scaffold **plus** the first wave of
+exploratory assets for the Jigsaw toxic-comment dataset. In addition to the
+original foundations, we now have:
 
-- provisioning a reproducible Python environment,
-- downloading and storing the Kaggle data locally, and
-- generating chronological fold splits for future experiments.
+- a `notebooks/data_explore.ipynb` workbook that benchmarks TF-IDF + Logistic
+	baselines, normalization strategies, temporal drift, and bucket-aware
+	augmentation with logging to `experiments/bucket_augmentation/outputs/`;
+- a `notebooks/multilabel_analysis.ipynb` outline ready to run multi-label
+	baselines, drift diagnostics, fairness slices, and SHAP interpretability;
+- standardized experiment directories under `experiments/` for artifacts and
+	metric traces.
 
-All training pipelines, notebooks, and model code were intentionally removed to
-keep the repo lightweight. (A full copy of the previous project state lives
-outside this repository.)
+The bootstrap scripts remain unchanged, so you can still spin up the project
+from scratch in one command and then open the notebooks for richer analysis.
+
 
 ## Prerequisites
 
 - Python 3.8+ with either Conda/Miniforge or the ability to create a virtualenv
 - `git`, `curl`/`wget`, and the Kaggle CLI (`pip install kaggle`)
-- Kaggle API token saved as `~/.kaggle/kaggle.json` or copied into the project
-	root
+- Kaggle API token saved as `~/.kaggle/kaggle.json` or copied into the project root
 
 ## Quick Start
 
@@ -68,37 +72,49 @@ outside this repository.)
 - `run_python.sh` – helper to execute any Python command inside the managed
 	environment (`conda run` or `.venv`).
 
-## Minimal Source Layout
-
-The `src/` tree currently exposes only two CLI entry points:
+## Source + Notebook Layout
 
 - `src/cli/download_data.py` – logic shared by the download script
 - `src/cli/make_splits.py` – chronological fold generation
+- `notebooks/data_explore.ipynb` – end-to-end exploratory workbook (label
+	prevalence, normalization, TF-IDF logistic baseline, error taxonomy, bucket
+	augmentation; writes logs to `experiments/bucket_augmentation/outputs/`)
+- `notebooks/multilabel_analysis.ipynb` – structured notebook for multi-label
+	baselines, fairness slices, SHAP, and artifact persistence under
+	`experiments/multilabel_analysis/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
 `src/utils`) remain as placeholders so the directory structure is ready when you
-add new functionality. They intentionally do **not** contain any implementation
-yet.
+add new functionality from the notebooks or CLI utilities.
 
-## Data Locations
+## Data & Experiment Locations
 
 - `data/raw/` – Kaggle CSVs (`train.csv`, `test.csv`, etc.) once downloaded
 - `data/splits/` – JSON index files produced by the split CLI
-- `artifacts/` – currently empty; reserved for future experiment outputs
+- `experiments/bucket_augmentation/` – CSV logs for oversampling sweeps driven
+	from `data_explore.ipynb`
+- `experiments/multilabel_analysis/` – placeholder for multi-label artifacts
+- `artifacts/` – general-purpose directory for future model checkpoints or
+	reports
 
 Raw datasets can be large; keep them out of Git unless absolutely required. Use
 `.gitignore` (already configured) to avoid accidental commits.
 
-## Next Steps
+## Current Status & Next Steps
 
-- Extend `src/data/` with normalization utilities or feature builders.
-- Implement training/inference modules under `src/models/` and
-	`src/pipeline/` when ready.
-- Add notebooks or reports back once you start experimentation (they were
-	removed from this slim scaffold).
+- ✅ Environment bootstrap, Kaggle download, and chronological splits are in
+	place.
+- ✅ Exploratory notebook covers normalization, TF-IDF baseline, error taxonomy,
+	and bucket-aware augmentation with logging.
+- 🟡 Multi-label notebook is authored and ready to run once you execute the
+	cells; results will land under `experiments/multilabel_analysis/`.
+- 🔜 Promote reusable notebook code (normalization, TF-IDF heads, fairness
+	slices) into `src/` packages and add tests/CLIs per `proposal.md`.
+- 🔜 Integrate bucket-aware augmentation knobs into the eventual training
+	pipeline and schedule regular drift checks using the chronological folds.
 
-Until then, this repo is deliberately lean: it gets you an environment, the
-datasets, and deterministic splits—nothing more.
+This repo now gets you an environment, the datasets, deterministic splits, and
+actionable notebooks to evaluate baselines and prep the production pipeline.
 
 ---
 
