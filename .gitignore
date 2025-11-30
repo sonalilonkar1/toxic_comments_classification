@@ -2,11 +2,11 @@
 __pycache__/
 *.pyc
 data/
+experiments
 artifacts/
 reports/figures/*.png
 reports/tables/*.csv
 kaggle.json
 .ipynb_checkpoints/
-
-Data_Mining_Project_Proposal.pdf
-Data_Mining_Project_Proposal_plain.txt
+proposal.md
+.DS_Store
