@@ -1,0 +1,218 @@
+{
+  "overview": {
+    "num_rows": 159571,
+    "num_columns": 8,
+    "memory_usage_mb": 94.72
+  },
+  "nulls": {
+    "null_count": {
+      "id": 0.0,
+      "comment_text": 0.0,
+      "toxic": 0.0,
+      "severe_toxic": 0.0,
+      "obscene": 0.0,
+      "threat": 0.0,
+      "insult": 0.0,
+      "identity_hate": 0.0,
+      "empty_comment_text": 0.0
+    },
+    "null_pct": {
+      "id": 0.0,
+      "comment_text": 0.0,
+      "toxic": 0.0,
+      "severe_toxic": 0.0,
+      "obscene": 0.0,
+      "threat": 0.0,
+      "insult": 0.0,
+      "identity_hate": 0.0,
+      "empty_comment_text": 0.0
+    }
+  },
+  "label_stats": {
+    "label_counts": {
+      "toxic": 15294,
+      "obscene": 8449,
+      "insult": 7877,
+      "severe_toxic": 1595,
+      "identity_hate": 1405,
+      "threat": 478
+    },
+    "label_percentages": {
+      "toxic": 9.584,
+      "obscene": 5.295,
+      "insult": 4.936,
+      "severe_toxic": 1.0,
+      "identity_hate": 0.88,
+      "threat": 0.3
+    },
+    "no_label_rows": 143346,
+    "at_least_one_label_rows": 16225,
+    "labels_per_row_distribution": [
+      [
+        0,
+        143346
+      ],
+      [
+        1,
+        6360
+      ],
+      [
+        3,
+        4209
+      ],
+      [
+        2,
+        3480
+      ],
+      [
+        4,
+        1760
+      ],
+      [
+        5,
+        385
+      ],
+      [
+        6,
+        31
+      ]
+    ],
+    "top_label_combinations": [
+      {
+        "combination": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "count": 143346
+      },
+      {
+        "combination": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "count": 5666
+      },
+      {
+        "combination": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          0
+        ],
+        "count": 3800
+      },
+      {
+        "combination": [
+          1,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "count": 1758
+      },
+      {
+        "combination": [
+          1,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "count": 1215
+      },
+      {
+        "combination": [
+          1,
+          1,
+          1,
+          0,
+          1,
+          0
+        ],
+        "count": 989
+      },
+      {
+        "combination": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          1
+        ],
+        "count": 618
+      },
+      {
+        "combination": [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "count": 317
+      },
+      {
+        "combination": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "count": 301
+      },
+      {
+        "combination": [
+          1,
+          1,
+          1,
+          0,
+          1,
+          1
+        ],
+        "count": 265
+      }
+    ]
+  },
+  "text_stats": {
+    "char_length_summary": {
+      "count": 159571.0,
+      "mean": 394.0732213246768,
+      "std": 590.7202819048917,
+      "min": 6.0,
+      "25%": 96.0,
+      "50%": 205.0,
+      "75%": 435.0,
+      "max": 5000.0
+    },
+    "word_length_summary": {
+      "count": 159571.0,
+      "mean": 67.27352714465661,
+      "std": 99.23070219290521,
+      "min": 1.0,
+      "25%": 17.0,
+      "50%": 36.0,
+      "75%": 75.0,
+      "max": 1411.0
+    },
+    "num_duplicates": 0,
+    "longest_comment": "ii CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND ARREST ME...SAN DIEGO CALIFORNIA, CHULA VISTA, FUCKING GET YOUR INFORMATION RIGHT FAGGOT SHITHEAD!!i CAN STILL POST WITH THIS COMPUTER...I SAID BLOCK ME, COME THE FUCK DOWN HERE AND AR",
+    "shortest_comment": "14:53,"
+  }
+}
