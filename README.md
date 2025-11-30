@@ -7,6 +7,8 @@ original foundations, we now have:
 - a `notebooks/data_explore.ipynb` workbook that benchmarks TF-IDF + Logistic
 	baselines, normalization strategies, temporal drift, and bucket-aware
 	augmentation with logging to `experiments/bucket_augmentation/outputs/`;
+- a `notebooks/multilabel_analysis.ipynb` outline ready to run multi-label
+	baselines, drift diagnostics, fairness slices, and SHAP interpretability;
 - standardized experiment directories under `experiments/` for artifacts and
 	metric traces.
 
