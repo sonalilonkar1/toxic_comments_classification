@@ -82,6 +82,8 @@ from scratch in one command and then open the notebooks for richer analysis.
 - `notebooks/multilabel_analysis.ipynb` – structured notebook for multi-label
 	baselines, fairness slices, SHAP, and artifact persistence under
 	`experiments/multilabel_analysis/`
+- `src/pipeline/train.py` – reusable TF-IDF + logistic pipeline that mirrors the
+	notebook flow and logs artifacts under `experiments/tfidf_logreg/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
 `src/utils`) remain as placeholders so the directory structure is ready when you
@@ -94,6 +96,7 @@ add new functionality from the notebooks or CLI utilities.
 - `experiments/bucket_augmentation/` – CSV logs for oversampling sweeps driven
 	from `data_explore.ipynb`
 - `experiments/multilabel_analysis/` – placeholder for multi-label artifacts
+- `experiments/tfidf_logreg/` – CLI-driven TF-IDF + logistic pipeline outputs
 - `artifacts/` – general-purpose directory for future model checkpoints or
 	reports
 
@@ -108,10 +111,41 @@ Raw datasets can be large; keep them out of Git unless absolutely required. Use
 	and bucket-aware augmentation with logging.
 - 🟡 Multi-label notebook is authored and ready to run once you execute the
 	cells; results will land under `experiments/multilabel_analysis/`.
-- 🔜 Promote reusable notebook code (normalization, TF-IDF heads, fairness
-	slices) into `src/` packages and add tests/CLIs per `proposal.md`.
+- ✅ Reusable TF-IDF + logistic pipeline lives in `src/pipeline/train.py` with a
+	CLI (`python -m src.cli.train_pipeline`) for running experiments outside the
+	notebooks, including optional bucket-aware oversampling controls.
 - 🔜 Integrate bucket-aware augmentation knobs into the eventual training
 	pipeline and schedule regular drift checks using the chronological folds.
+
+## Run the reusable pipeline
+
+Execute the TF-IDF + logistic baseline across all folds (or a specific fold)
+and persist metrics/models under `experiments/tfidf_logreg/`:
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline --output-dir experiments/tfidf_logreg
+```
+
+To target a single fold with richer normalization:
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+  --fold fold1_seed42 \
+  --normalization rich \
+  --max-features 75000 \
+  --output-dir experiments/tfidf_logreg
+```
+
+Apply bucket-aware oversampling by pointing to a bucket column (list-like or JSON
+encoded) and specifying repeatable multipliers:
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+	--bucket-col bucket_tags_full \
+	--bucket-mult rare=3 \
+	--bucket-mult misogyny=2 \
+	--output-dir experiments/tfidf_logreg
+```
 
 This repo now gets you an environment, the datasets, deterministic splits, and
 actionable notebooks to evaluate baselines and prep the production pipeline.
