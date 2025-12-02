@@ -1,0 +1,67 @@
+version: 1
+unicode_form: "NFKC"
+lowercase: true
+strip_whitespace: true
+mask_tokens:
+  url: "<URL>"
+  email: "<EMAIL>"
+  user: "<USER>"
+  hashtag: "<HASHTAG>"
+  number: "<NUM>"
+emoji:
+  enabled: true
+  strategy: "sentiment"
+  default_token: "<EMOJI>"
+  sentiment_tokens:
+    positive: "<EMOJI_POS>"
+    negative: "<EMOJI_NEG>"
+    neutral: "<EMOJI_NEU>"
+  preserve_codepoint: false
+  detect_emoticons: true
+leetspeak:
+  enabled: true
+  map:
+    "0": "o"
+    "1": "i"
+    "2": "z"
+    "3": "e"
+    "4": "a"
+    "5": "s"
+    "6": "g"
+    "7": "t"
+    "8": "b"
+    "9": "g"
+    "@": "a"
+    "$": "s"
+    "+": "t"
+    "!": "i"
+obfuscation:
+  collapse_repeats: 2
+  strip_delimiters: [".", "-", "_", " "]
+  keep_mixed_case: true
+punctuation:
+  burst_token: "<PUNCT>"
+  min_run: 3
+contractions:
+  enabled: true
+  map:
+    "can't": "cannot"
+    "won't": "will not"
+    "i'm": "i am"
+    "you're": "you are"
+    "they're": "they are"
+    "we're": "we are"
+    "it's": "it is"
+    "that's": "that is"
+    "there's": "there is"
+    "what's": "what is"
+    "let's": "let us"
+    "didn't": "did not"
+    "don't": "do not"
+    "doesn't": "does not"
+    "isn't": "is not"
+    "aren't": "are not"
+whitespace:
+  squeeze: true
+  trim: true
+newline_token: null

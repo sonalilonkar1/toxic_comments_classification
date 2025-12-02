@@ -1,0 +1,54 @@
+version: 1
+default_bucket_column: bucket_tags
+rules:
+  - name: identity_terms
+    type: keyword
+    keywords: ["jew", "muslim", "christian", "black", "white", "asian", "latino", "gay", "lesbian", "trans", "immigrant"]
+    match_type: word
+    case_sensitive: false
+  - name: profanity_core
+    type: keyword
+    keywords: ["fuck", "shit", "bitch", "asshole", "bastard", "slut", "whore", "cunt"]
+    match_type: substring
+    case_sensitive: false
+  - name: obfuscated_profanity
+    type: regex
+    patterns:
+      - "f[\\W_]*u[\\W_]*c[\\W_]*k"
+      - "b[\\W_]*i[\\W_]*t[\\W_]*c[\\W_]*h"
+      - "s[\\W_]*h[\\W_]*i[\\W_]*t"
+    flags: [IGNORECASE]
+  - name: emoji_positive
+    type: token
+    tokens: ["<EMOJI_POS>"]
+  - name: emoji_negative
+    type: token
+    tokens: ["<EMOJI_NEG>"]
+  - name: emoji_neutral
+    type: token
+    tokens: ["<EMOJI_NEU>"]
+  - name: shouting
+    type: rule
+    rule: uppercase_ratio
+    threshold: 0.6
+    min_length: 5
+  - name: punctuation_burst
+    type: rule
+    rule: punctuation_run
+    threshold: 3
+  - name: question_intent
+    type: rule
+    rule: question_mark
+  - name: quoted_speech
+    type: rule
+    rule: quote_block
+  - name: sarcasm_marker
+    type: keyword
+    keywords: ["/s", "sarcasm"]
+    match_type: substring
+    case_sensitive: false
+  - name: reclaimed_terms
+    type: keyword
+    keywords: ["nigga", "queer", "dyke", "crip"]
+    match_type: word
+    case_sensitive: false

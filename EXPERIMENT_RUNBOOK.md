@@ -10,7 +10,19 @@ This living document explains how to execute each supported model pipeline, whic
    bash scripts/00_bootstrap_project.sh --skip-torch
    ./scripts/run_python.sh -m src.cli.make_splits --folds 3
    ```
-3. Use the CLI entry point for reproducible runs:
+3. (Optional but recommended) Materialize normalized text + bucket tags so all folds share identical preprocessing:
+   ```bash
+   ./scripts/run_python.sh -m src.cli.make_normalized_text \
+     --data-path data/raw/train.csv \
+     --output-path artifacts/normalized/train.parquet
+   ./scripts/run_python.sh -m src.cli.make_bucket_tags \
+     --data-path data/raw/train.csv \
+     --normalized-cache artifacts/normalized/train.parquet \
+     --output-path artifacts/buckets/train.parquet
+   ```
+   These CLIs respect `configs/normalization.yaml` / `configs/buckets.yaml` and emit metadata with config hashes so the training pipeline can detect stale caches.
+
+4. Use the CLI entry point for reproducible runs:
    ```bash
    ./scripts/run_python.sh -m src.cli.train_pipeline [OPTIONS]
    ```
@@ -18,9 +30,11 @@ This living document explains how to execute each supported model pipeline, whic
 
 Key shared flags:
 - `--fold FOLD_NAME`: run a specific chronological fold; omit to run all folds.
-- `--normalization {raw,toy,rich}`: controls preprocessing aggressiveness. Rich normalization generally improves robustness to obfuscation but may slightly dampen rare token signals.
+- `--normalization {raw,toy,rich,config}`: controls preprocessing aggressiveness. Choose `config` to load the YAML-driven normalizer (`--normalization-config`) or pair with `--normalized-cache` to reuse artifacts from `make_normalized_text`.
+- `--normalized-cache PATH`: skip on-the-fly normalization and align cached text via `row_index`. Hash validation ensures the cache matches the active YAML.
 - `--max-features N`, `--ngram-max K`: tune TF-IDF vocabulary size. Larger vocabularies can boost recall but increase runtime/memory.
-- `--bucket-col COL`, `--bucket-mult tag=factor`: enable bucket-aware oversampling to lift minority behaviors (effects mainly observed in recall for bucket-aligned labels).
+- `--bucket-col COL`: column containing bucket tags. Set to `auto` to join a cache created by `make_bucket_tags` (requires `--bucket-cache`).
+- `--bucket-cache PATH`, `--bucket-config PATH`, `--bucket-mult tag=factor`: feed cached tags and oversample specific behaviors; hashes guard against stale YAML/config mismatches.
 - `--threshold T`: probability threshold used for metrics (micro/macro F1, hamming loss). Decision-policy targets will override this in future updates.
 
 Artifacts to monitor:
@@ -44,6 +58,8 @@ Artifacts to monitor:
   --model-max-iter 400 \
   --output-dir experiments/tfidf_logreg
 ```
+
+> Tip: swap `--normalization toy` for `--normalization config --normalization-config configs/normalization.yaml --normalized-cache artifacts/normalized/train.parquet` to ensure the CLI reuses the cached normalization stage.
 
 **Key parameters and their effects:**
 - `--model-C`: inverse regularization strength. Higher values reduce bias (potentially higher recall) but risk overfitting/noisier calibration.
@@ -72,6 +88,8 @@ Artifacts to monitor:
   --svm-calib-cv 5 \
   --output-dir experiments/tfidf_logreg
 ```
+
+Add `--bucket-col auto --bucket-cache artifacts/buckets/train.parquet --bucket-config configs/buckets.yaml --bucket-mult rare=2` when you want calibrated SVMs to oversample specific behavioral buckets sourced from the cache.
 
 **Parameter guidance:**
 - `--svm-C`: similar trade-offs as logistic C. Lower values improve generalization but may reduce recall.

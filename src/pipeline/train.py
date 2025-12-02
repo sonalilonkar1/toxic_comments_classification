@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional
 
@@ -12,7 +13,18 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from src.data.buckets import (
+    DEFAULT_BUCKET_CONFIG_PATH,
+    compute_bucket_hash,
+    load_bucket_config,
+)
 from src.data.dataset import load_fold_frames
+from src.data.normalization import (
+    DEFAULT_NORMALIZATION_CONFIG_PATH,
+    build_normalizer,
+    compute_config_hash as compute_normalization_hash,
+    load_normalization_config,
+)
 from src.data.preprocess import rich_normalize, toy_normalize
 from src.features.tfidf import (
     oversample_buckets,
@@ -94,11 +106,16 @@ class TrainConfig:
     label_cols: Optional[List[str]] = None
     text_col: str = "comment_text"
     normalization: str = "toy"
+    normalization_config: Optional[Path] = DEFAULT_NORMALIZATION_CONFIG_PATH
+    normalized_cache: Optional[Path] = None
     threshold: float = 0.5
     fairness_min_support: int = 50
     seed: int = 42
     bucket_col: Optional[str] = None
     bucket_multipliers: Optional[Dict[str, int]] = None
+    bucket_config: Optional[Path] = DEFAULT_BUCKET_CONFIG_PATH
+    bucket_cache: Optional[Path] = None
+    bucket_cache_column: str = "bucket_tags"
     model_type: str = "logistic"
     vectorizer_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_VECTORIZER.copy())
     model_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_MODEL.copy())
@@ -110,6 +127,14 @@ class TrainConfig:
         self.data_path = Path(self.data_path)
         self.splits_dir = Path(self.splits_dir)
         self.output_dir = Path(self.output_dir)
+        if self.normalization_config is not None:
+            self.normalization_config = Path(self.normalization_config)
+        if self.normalized_cache is not None:
+            self.normalized_cache = Path(self.normalized_cache)
+        if self.bucket_config is not None:
+            self.bucket_config = Path(self.bucket_config)
+        if self.bucket_cache is not None:
+            self.bucket_cache = Path(self.bucket_cache)
 
     def resolve_label_cols(self, df: pd.DataFrame) -> List[str]:
         if self.label_cols:
@@ -146,6 +171,8 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
     if model_type not in {"logistic", "svm", "random_forest"}:
         raise ValueError("model_type must be one of {'logistic', 'svm', 'random_forest'}")
 
+    normalizer, normalizer_hash = _prepare_normalizer(config)
+    bucket_hash = _prepare_bucket_hash(config)
     results: Dict[str, Dict[str, object]] = {}
     for fold_name in target_folds:
         fold_dir = _prepare_fold_dir(config.output_dir, fold_name, config)
@@ -156,6 +183,9 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
             label_cols=label_cols,
             fold_dir=fold_dir,
             config=config,
+            normalizer=normalizer,
+            normalizer_hash=normalizer_hash,
+            bucket_hash=bucket_hash,
         )
         results[fold_name] = fold_metrics
 
@@ -177,20 +207,22 @@ def _train_single_fold(
     label_cols: List[str],
     fold_dir: Path,
     config: TrainConfig,
+    normalizer: Normalizer,
+    normalizer_hash: Optional[str],
+    bucket_hash: Optional[str],
 ) -> Dict[str, object]:
     """Train/evaluate a single fold and persist artifacts."""
 
-    normalizer = _resolve_normalizer(config.normalization)
     text_col = config.text_col
 
     train_df = fold_splits["train"].reset_index(drop=True)
-    train_df = _maybe_apply_bucket_augmentation(train_df, config)
+    train_df = _maybe_apply_bucket_augmentation(train_df, config, bucket_hash)
     dev_df = fold_splits["dev"].reset_index(drop=True)
     test_df = fold_splits["test"].reset_index(drop=True)
 
-    X_train = _normalize_series(train_df[text_col], normalizer)
-    X_dev = _normalize_series(dev_df[text_col], normalizer)
-    X_test = _normalize_series(test_df[text_col], normalizer)
+    X_train = _resolve_text_series(train_df, text_col, normalizer, config, normalizer_hash)
+    X_dev = _resolve_text_series(dev_df, text_col, normalizer, config, normalizer_hash)
+    X_test = _resolve_text_series(test_df, text_col, normalizer, config, normalizer_hash)
 
     y_train = train_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
@@ -273,7 +305,7 @@ def _prepare_fold_dir(base_dir: Path, fold_name: str, config: TrainConfig) -> Pa
     return fold_dir
 
 
-def _resolve_normalizer(name: str) -> Normalizer:
+def _resolve_builtin_normalizer(name: str) -> Normalizer:
     if name in (None, "raw"):
         return None
     if name not in NORMALIZERS:
@@ -281,11 +313,100 @@ def _resolve_normalizer(name: str) -> Normalizer:
     return NORMALIZERS[name]
 
 
+def _prepare_normalizer(config: TrainConfig) -> tuple[Normalizer, Optional[str]]:
+    if config.normalization == "config":
+        if config.normalization_config is None:
+            raise ValueError("normalization='config' requires --normalization-config.")
+        profile = load_normalization_config(config.normalization_config)
+        normalizer = build_normalizer(profile)
+        return normalizer, compute_normalization_hash(profile)
+    return _resolve_builtin_normalizer(config.normalization), None
+
+
+def _prepare_bucket_hash(config: TrainConfig) -> Optional[str]:
+    if not config.bucket_cache or not config.bucket_config:
+        return None
+    payload = load_bucket_config(config.bucket_config)
+    return compute_bucket_hash(payload)
+
+
 def _normalize_series(series: pd.Series, normalizer: Normalizer) -> pd.Series:
     series = series.fillna("").astype(str)
     if normalizer is None:
         return series
     return series.apply(normalizer)
+
+
+def _resolve_text_series(
+    df: pd.DataFrame,
+    text_col: str,
+    normalizer: Normalizer,
+    config: TrainConfig,
+    normalizer_hash: Optional[str],
+) -> pd.Series:
+    if config.normalized_cache is not None:
+        if "row_index" not in df.columns:
+            raise ValueError("row_index column missing; regenerate fold splits to use normalized cache.")
+        series, cache_hash = _normalized_series_from_cache(config.normalized_cache, df["row_index"])
+        _validate_cache_hash(normalizer_hash, cache_hash, "normalized-text", config.normalized_cache)
+        return series
+    return _normalize_series(df[text_col], normalizer)
+
+
+def _normalized_series_from_cache(path: Path, row_index: pd.Series) -> tuple[pd.Series, Optional[str]]:
+    cache_df = _read_parquet_cache(str(path))
+    required = {"row_index", "normalized_text"}
+    missing = required - set(cache_df.columns)
+    if missing:
+        raise ValueError(f"Normalized cache missing columns: {', '.join(sorted(missing))}")
+    mapping = dict(zip(cache_df["row_index"], cache_df["normalized_text"]))
+    series = row_index.map(mapping).fillna("")
+    hash_value = _extract_cache_hash(cache_df, "config_hash")
+    return series.astype(str), hash_value
+
+
+def _bucket_tags_from_cache(path: Path, row_index: pd.Series) -> tuple[pd.Series, Optional[str]]:
+    cache_df = _read_parquet_cache(str(path))
+    required = {"row_index", "bucket_tags"}
+    missing = required - set(cache_df.columns)
+    if missing:
+        raise ValueError(f"Bucket cache missing columns: {', '.join(sorted(missing))}")
+    mapping = {}
+    for key, raw_value in zip(cache_df["row_index"], cache_df["bucket_tags"]):
+        mapping[int(key)] = _ensure_bucket_list(raw_value)
+
+    def _lookup(idx: int) -> List[str]:
+        value = mapping.get(int(idx))
+        return list(value) if isinstance(value, list) else []
+
+    series = row_index.map(_lookup)
+    hash_value = _extract_cache_hash(cache_df, "config_hash")
+    return series, hash_value
+
+
+def _extract_cache_hash(df: pd.DataFrame, column: str) -> Optional[str]:
+    if column not in df.columns:
+        return None
+    values = [val for val in df[column].dropna().unique() if isinstance(val, str)]
+    return values[0] if values else None
+
+
+def _validate_cache_hash(
+    expected: Optional[str],
+    actual: Optional[str],
+    label: str,
+    path: Path,
+) -> None:
+    if expected and actual and expected != actual:
+        raise ValueError(
+            f"{label} cache at {path} was produced with hash {actual}, "
+            f"but expected {expected}. Regenerate the cache or pass the matching config."
+        )
+
+
+@lru_cache(maxsize=8)
+def _read_parquet_cache(path: str) -> pd.DataFrame:
+    return pd.read_parquet(path)
 
 
 def _persist_artifacts(
@@ -331,6 +452,11 @@ def _persist_artifacts(
         "label_cols": label_cols,
         "active_fold": fold_name,
         "model_type": model_type,
+        "normalization_config": str(config.normalization_config) if config.normalization_config else None,
+        "normalized_cache": str(config.normalized_cache) if config.normalized_cache else None,
+        "bucket_config": str(config.bucket_config) if config.bucket_config else None,
+        "bucket_cache": str(config.bucket_cache) if config.bucket_cache else None,
+        "bucket_cache_column": config.bucket_cache_column,
     })
     with open(config_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
@@ -366,23 +492,40 @@ def _build_predictions_frame(
     return pd.DataFrame(payload)
 
 
-def _maybe_apply_bucket_augmentation(train_df: pd.DataFrame, config: TrainConfig) -> pd.DataFrame:
+def _maybe_apply_bucket_augmentation(
+    train_df: pd.DataFrame,
+    config: TrainConfig,
+    bucket_hash: Optional[str],
+) -> pd.DataFrame:
     """Optionally oversample training rows based on bucket multipliers."""
 
     if not config.bucket_multipliers:
         return train_df
 
-    if not config.bucket_col:
+    if "row_index" not in train_df.columns:
+        raise ValueError("row_index column missing; cannot align bucket cache with training data.")
+
+    prepared = train_df.copy()
+    bucket_col = config.bucket_col
+
+    if bucket_col == "auto":
+        if config.bucket_cache is None:
+            raise ValueError("bucket_col='auto' requires --bucket-cache to be set.")
+        bucket_series, cache_hash = _bucket_tags_from_cache(config.bucket_cache, prepared["row_index"])
+        _validate_cache_hash(bucket_hash, cache_hash, "bucket-tags", config.bucket_cache)
+        bucket_col = config.bucket_cache_column
+        prepared[bucket_col] = bucket_series
+
+    if not bucket_col:
         raise ValueError("bucket_col must be specified when bucket_multipliers are provided.")
-    if config.bucket_col not in train_df.columns:
+    if bucket_col not in prepared.columns:
         print(
-            f"[bucket-oversample] Column '{config.bucket_col}' missing; skipping bucket augmentation."
+            f"[bucket-oversample] Column '{bucket_col}' missing; skipping bucket augmentation."
         )
         return train_df
 
-    prepared = train_df.copy()
-    prepared[config.bucket_col] = prepared[config.bucket_col].apply(_ensure_bucket_list)
-    return oversample_buckets(prepared, config.bucket_col, config.bucket_multipliers)
+    prepared[bucket_col] = prepared[bucket_col].apply(_ensure_bucket_list)
+    return oversample_buckets(prepared, bucket_col, config.bucket_multipliers)
 
 
 def _ensure_bucket_list(raw_value) -> List[str]:
