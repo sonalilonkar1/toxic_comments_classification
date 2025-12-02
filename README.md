@@ -102,6 +102,8 @@ from scratch in one command and then open the notebooks for richer analysis.
 	`experiments/multilabel_analysis/`
 - `src/data/normalization.py` – config-driven emoji/obfuscation-aware normalizer used by both CLIs and pipeline
 - `src/data/buckets.py` – YAML-driven bucket tagging helpers + cache loaders
+- `src/features/tfidf.py` – TF-IDF vectorizer factory plus bucket oversampling helpers shared by all classical trainers
+- `src/models/tfidf_logistic.py`, `src/models/tfidf_svm.py`, `src/models/tfidf_random_forest.py` – dedicated TF-IDF trainer modules that the pipeline + notebooks import
 - `src/pipeline/train.py` – reusable TF-IDF pipeline that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
