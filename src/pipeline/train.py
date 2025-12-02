@@ -26,12 +26,10 @@ from src.data.normalization import (
     load_normalization_config,
 )
 from src.data.preprocess import rich_normalize, toy_normalize
-from src.features.tfidf import (
-    oversample_buckets,
-    train_multilabel_tfidf_linear_svm,
-    train_multilabel_tfidf_logistic,
-    train_multilabel_tfidf_random_forest,
-)
+from src.features.tfidf import oversample_buckets
+from src.models.tfidf_logistic import train_multilabel_tfidf_logistic
+from src.models.tfidf_random_forest import train_multilabel_tfidf_random_forest
+from src.models.tfidf_svm import train_multilabel_tfidf_linear_svm
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
