@@ -48,6 +48,13 @@ def parse_args() -> argparse.Namespace:
         help="Text normalization strategy.",
     )
     parser.add_argument(
+        "--model",
+        type=str,
+        default="logistic",
+        choices=["logistic", "svm"],
+        help="Model type to train on TF-IDF features.",
+    )
+    parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
@@ -114,6 +121,37 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override LogisticRegression max_iter value.",
     )
+    parser.add_argument(
+        "--svm-C",
+        type=float,
+        default=None,
+        help="Override LinearSVC C value (when --model svm).",
+    )
+    parser.add_argument(
+        "--svm-max-iter",
+        type=int,
+        default=None,
+        help="Override LinearSVC max_iter (when --model svm).",
+    )
+    parser.add_argument(
+        "--svm-class-weight",
+        type=str,
+        default=None,
+        help="Override LinearSVC class_weight (e.g., balanced).",
+    )
+    parser.add_argument(
+        "--svm-calib-method",
+        type=str,
+        default=None,
+        choices=["sigmoid", "isotonic"],
+        help="Calibration method for SVM probabilities.",
+    )
+    parser.add_argument(
+        "--svm-calib-cv",
+        type=int,
+        default=None,
+        help="Number of folds for SVM calibration CV.",
+    )
     return parser.parse_args()
 
 
@@ -145,6 +183,7 @@ def main() -> None:
         label_cols=args.labels,
         text_col=args.text_col,
         normalization=args.normalization,
+        model_type=args.model,
         threshold=args.threshold,
         fairness_min_support=args.fairness_min_support,
         seed=args.seed,
@@ -164,6 +203,16 @@ def main() -> None:
         config.model_params["C"] = args.model_C
     if args.model_max_iter is not None:
         config.model_params["max_iter"] = args.model_max_iter
+    if args.svm_C is not None:
+        config.svm_params["C"] = args.svm_C
+    if args.svm_max_iter is not None:
+        config.svm_params["max_iter"] = args.svm_max_iter
+    if args.svm_class_weight is not None:
+        config.svm_params["class_weight"] = args.svm_class_weight
+    if args.svm_calib_method is not None:
+        config.svm_calibration_params["method"] = args.svm_calib_method
+    if args.svm_calib_cv is not None:
+        config.svm_calibration_params["cv"] = args.svm_calib_cv
 
     results = run_training_pipeline(config)
     for fold_name, payload in results.items():

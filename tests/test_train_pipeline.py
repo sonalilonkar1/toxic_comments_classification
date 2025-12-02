@@ -130,3 +130,38 @@ def test_pipeline_requires_bucket_column(tmp_path: Path, toy_data: tuple[Path, P
 
     with pytest.raises(ValueError):
         run_training_pipeline(config)
+
+
+def test_run_pipeline_with_linear_svm(tmp_path: Path, toy_data: tuple[Path, Path]) -> None:
+    data_path, splits_dir = toy_data
+    output_dir = tmp_path / "experiments"
+    config = TrainConfig(
+        data_path=data_path,
+        splits_dir=splits_dir,
+        output_dir=output_dir,
+        fold="fold1_seed42",
+        label_cols=["toxic", "obscene"],
+        model_type="svm",
+        vectorizer_params={
+            "max_features": 500,
+            "ngram_range": (1, 1),
+            "min_df": 1,
+            "max_df": 1.0,
+            "lowercase": True,
+            "strip_accents": None,
+        },
+        svm_params={
+            "C": 0.5,
+            "class_weight": None,
+            "max_iter": 1000,
+        },
+        svm_calibration_params={"method": "sigmoid", "cv": 2},
+    )
+
+    results = run_training_pipeline(config)
+    assert "fold1_seed42" in results
+    metrics = results["fold1_seed42"]["overall_metrics"]
+    assert metrics["micro_f1"] >= 0.0
+
+    fold_dirs = list(output_dir.glob("fold1_seed42-*"))
+    assert fold_dirs, "SVM pipeline should emit a fold directory"
