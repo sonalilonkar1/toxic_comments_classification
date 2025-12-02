@@ -4,8 +4,10 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 
 
 def create_tfidf_vectorizer(
@@ -61,6 +63,45 @@ def train_multilabel_tfidf_logistic(
         clf = LogisticRegression(**model_params)
         clf.fit(X_train_vec, y_train[:, idx])
         models[label] = clf
+
+    return tfidf, models
+
+
+def train_multilabel_tfidf_linear_svm(
+    X_train: List[str],
+    y_train: np.ndarray,
+    label_cols: List[str],
+    vectorizer_params: Optional[Dict] = None,
+    svm_params: Optional[Dict] = None,
+    calibration_params: Optional[Dict] = None,
+) -> tuple[TfidfVectorizer, Dict[str, CalibratedClassifierCV]]:
+    """Train TF-IDF + LinearSVC models per label with probability calibration."""
+
+    if vectorizer_params is None:
+        vectorizer_params = {}
+    if svm_params is None:
+        svm_params = {
+            "C": 1.0,
+            "class_weight": "balanced",
+            "max_iter": 2000,
+        }
+    if calibration_params is None:
+        calibration_params = {"method": "sigmoid", "cv": 3}
+
+    tfidf = create_tfidf_vectorizer(**vectorizer_params)
+    X_train_vec = tfidf.fit_transform(X_train)
+
+    models: Dict[str, CalibratedClassifierCV] = {}
+    for idx, label in enumerate(label_cols):
+        base_svm = LinearSVC(**svm_params)
+        calibrated = CalibratedClassifierCV(
+            estimator=base_svm,
+            method=calibration_params.get("method", "sigmoid"),
+            cv=calibration_params.get("cv", 3),
+            n_jobs=calibration_params.get("n_jobs"),
+        )
+        calibrated.fit(X_train_vec, y_train[:, idx])
+        models[label] = calibrated
 
     return tfidf, models
 

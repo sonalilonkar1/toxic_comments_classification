@@ -14,7 +14,11 @@ import pandas as pd
 
 from src.data.dataset import load_fold_frames
 from src.data.preprocess import rich_normalize, toy_normalize
-from src.features.tfidf import oversample_buckets, train_multilabel_tfidf_logistic
+from src.features.tfidf import (
+    oversample_buckets,
+    train_multilabel_tfidf_linear_svm,
+    train_multilabel_tfidf_logistic,
+)
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
@@ -47,6 +51,17 @@ DEFAULT_MODEL: Dict[str, object] = {
     "C": 1.0,
 }
 
+DEFAULT_SVM: Dict[str, object] = {
+    "C": 1.0,
+    "class_weight": "balanced",
+    "max_iter": 2000,
+}
+
+DEFAULT_SVM_CALIBRATION: Dict[str, object] = {
+    "method": "sigmoid",
+    "cv": 3,
+}
+
 Normalizer = Optional[Callable[[str], str]]
 
 NORMALIZERS: Dict[str, Normalizer] = {
@@ -72,8 +87,11 @@ class TrainConfig:
     seed: int = 42
     bucket_col: Optional[str] = None
     bucket_multipliers: Optional[Dict[str, int]] = None
+    model_type: str = "logistic"
     vectorizer_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_VECTORIZER.copy())
     model_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_MODEL.copy())
+    svm_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM.copy())
+    svm_calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
 
     def __post_init__(self) -> None:
         self.data_path = Path(self.data_path)
@@ -110,6 +128,10 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
         target_folds = [config.fold]
     else:
         target_folds = sorted(fold_frames.keys())
+
+    model_type = config.model_type.lower()
+    if model_type not in {"logistic", "svm"}:
+        raise ValueError("model_type must be one of {'logistic', 'svm'}")
 
     results: Dict[str, Dict[str, object]] = {}
     for fold_name in target_folds:
@@ -160,13 +182,23 @@ def _train_single_fold(
     y_train = train_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
 
-    tfidf, label_models = train_multilabel_tfidf_logistic(
-        X_train.tolist(),
-        y_train,
-        label_cols,
-        vectorizer_params=config.vectorizer_params,
-        model_params=config.model_params,
-    )
+    if config.model_type == "svm":
+        tfidf, label_models = train_multilabel_tfidf_linear_svm(
+            X_train.tolist(),
+            y_train,
+            label_cols,
+            vectorizer_params=config.vectorizer_params,
+            svm_params=config.svm_params,
+            calibration_params=config.svm_calibration_params,
+        )
+    else:
+        tfidf, label_models = train_multilabel_tfidf_logistic(
+            X_train.tolist(),
+            y_train,
+            label_cols,
+            vectorizer_params=config.vectorizer_params,
+            model_params=config.model_params,
+        )
 
     X_test_vec = tfidf.transform(X_test.tolist())
     test_probs = {
@@ -199,6 +231,7 @@ def _train_single_fold(
         tfidf=tfidf,
         label_models=label_models,
         text_col=text_col,
+        model_type=config.model_type,
     )
 
     return {
@@ -245,6 +278,7 @@ def _persist_artifacts(
     tfidf,
     label_models,
     text_col: str,
+    model_type: str,
 ) -> None:
     overall_path = fold_dir / "overall_metrics.json"
     per_label_path = fold_dir / "per_label_metrics.csv"
@@ -272,6 +306,7 @@ def _persist_artifacts(
         "output_dir": str(config.output_dir),
         "label_cols": label_cols,
         "active_fold": fold_name,
+        "model_type": model_type,
     })
     with open(config_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
