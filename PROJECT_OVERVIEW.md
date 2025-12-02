@@ -47,8 +47,11 @@ src/
 │   ├── preprocess.py           # `toy_normalize`, `rich_normalize` text utilities
 │   └── ...
 ├── features/
-│   └── tfidf.py                # TF-IDF vectorizer factory, logistic trainer, bucket oversampling helper
+│   └── tfidf.py                # TF-IDF vectorizer factory plus bucket oversampling helper
 ├── models/
+│   ├── tfidf_logistic.py       # Multi-label TF-IDF + LogisticRegression trainer
+│   ├── tfidf_svm.py            # Calibrated TF-IDF + LinearSVC trainer
+│   ├── tfidf_random_forest.py  # TF-IDF + RandomForestClassifier trainer
 │   ├── bert_model.py           # Placeholder for transformer models
 │   └── traditional.py          # Placeholder for NB/LR/SVM/RF/XGB implementations
 ├── pipeline/
@@ -63,7 +66,10 @@ src/
 ### Highlights
 - **`src/pipeline/train.py`**: Encapsulates the TF-IDF + logistic baseline. It loads folds via `load_fold_frames`, applies optional normalization/bucket oversampling, trains per-label logistic heads, computes metrics/fairness, and writes artifacts (metrics JSON/CSV, predictions, serialized models) under timestamped `experiments/tfidf_logreg/` directories. Configured via the `TrainConfig` dataclass.
 - **`src/cli/train_pipeline.py`**: Argparse front-end for the pipeline. Supports selecting folds, normalization strategy, TF-IDF/model hyperparameters, bucket oversampling (`--bucket-col`, `--bucket-mult`), and fairness thresholds. Prints summary micro/macro F1 and hamming loss per fold.
-- **`src/features/tfidf.py`**: Houses TF-IDF vectorizer creation, `train_multilabel_tfidf_logistic`, and `oversample_buckets`. Used by notebooks and the pipeline.
+- **`src/features/tfidf.py`**: Houses TF-IDF vectorizer creation plus `oversample_buckets`. Shared between notebooks and the pipeline.
+- **`src/models/tfidf_logistic.py`**: Implements the multi-label TF-IDF + logistic trainer used across notebooks and the pipeline.
+- **`src/models/tfidf_svm.py`**: Provides the calibrated TF-IDF + LinearSVC trainer (probability estimates for downstream metrics).
+- **`src/models/tfidf_random_forest.py`**: Offers a TF-IDF + RandomForest baseline compatible with the same interfaces.
 - **`src/utils/metrics.py`**: Provides `compute_multilabel_metrics`, `compute_fairness_slices`, and `probs_to_preds`. Enables consistent evaluation across notebooks, pipeline runs, and future models.
 - **`src/data/preprocess.py`**: Contains normalization routines referenced by notebooks and future data loaders. Tests in `tests/test_preprocess.py` ensure deterministic behavior.
 - **`src/data/dataset.py`**: Handles reading `train.csv`, injecting mock timestamps, and hydrating fold splits from JSON index files. It returns combined data structures (base dataframe, fold map, identity column list, fold size table).
