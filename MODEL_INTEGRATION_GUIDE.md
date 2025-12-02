@@ -5,7 +5,7 @@ This guide documents the repeatable steps for adding new models (classical or ne
 ---
 ## 1. Plan the Integration
 1. **Decide feature inputs:**
-   - Classical models usually reuse TF-IDF word + char n-grams via `src/features/tfidf.py`.
+   - Classical models usually reuse TF-IDF word + char n-grams via `src/features/tfidf.py` (vectorizer factory + bucket helpers) while their trainers live under `src/models/`.
    - Neural models (LSTM, DistilBERT) will have their own tokenization/data pipelines (plan in `src/data/`).
 2. **Identify outputs:** ensure the new model can produce per-label probabilities (or calibrated scores) so metrics/fairness/decision policies remain consistent.
 3. **Determine configuration knobs:** list the hyperparameters that should be configurable via CLI flags (e.g., regularization strength, number of estimators, learning rate).
@@ -15,11 +15,11 @@ Document any special requirements in `plan.md` before coding so they align with 
 ---
 ## 2. Implement the Trainer
 ### 2.1 Classical models (TF-IDF based)
-1. **Add a trainer function** (e.g., `train_multilabel_tfidf_linear_svm` in `src/features/tfidf.py`). Pattern:
+1. **Add a trainer module** (e.g., `src/models/tfidf_linear_svm.py`) and expose a trainer function such as `train_multilabel_tfidf_linear_svm`. Pattern:
    - Accept `X_train` text list, `y_train` numpy array, label names, vectorizer params, and model-specific params.
-   - Fit TF-IDF vectorizer and transform training text.
+   - Import `create_tfidf_vectorizer` (and `oversample_buckets` if needed) from `src.features.tfidf`, fit the vectorizer, and transform training text.
    - Loop over labels to fit one model per label (or a shared multi-label classifier if applicable).
-   - Return the fitted vectorizer and a dict of per-label estimators.
+   - Return the fitted vectorizer and a dict of per-label estimators. Export the trainer via `__all__` so other modules can import it consistently.
 2. **Calibration:**
    - If the base model lacks `predict_proba`, wrap it with `CalibratedClassifierCV` (e.g., LinearSVC).
    - Expose calibration parameters (method, CV folds) so CLI can tune them.
