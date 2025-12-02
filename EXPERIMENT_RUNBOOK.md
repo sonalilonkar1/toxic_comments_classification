@@ -10,7 +10,19 @@ This living document explains how to execute each supported model pipeline, whic
    bash scripts/00_bootstrap_project.sh --skip-torch
    ./scripts/run_python.sh -m src.cli.make_splits --folds 3
    ```
-3. Use the CLI entry point for reproducible runs:
+3. (Optional but recommended) Materialize normalized text + bucket tags so all folds share identical preprocessing:
+   ```bash
+   ./scripts/run_python.sh -m src.cli.make_normalized_text \
+     --data-path data/raw/train.csv \
+     --output-path artifacts/normalized/train.parquet
+   ./scripts/run_python.sh -m src.cli.make_bucket_tags \
+     --data-path data/raw/train.csv \
+     --normalized-cache artifacts/normalized/train.parquet \
+     --output-path artifacts/buckets/train.parquet
+   ```
+   These CLIs respect `configs/normalization.yaml` / `configs/buckets.yaml` and emit metadata with config hashes so the training pipeline can detect stale caches.
+
+4. Use the CLI entry point for reproducible runs:
    ```bash
    ./scripts/run_python.sh -m src.cli.train_pipeline [OPTIONS]
    ```
@@ -18,9 +30,11 @@ This living document explains how to execute each supported model pipeline, whic
 
 Key shared flags:
 - `--fold FOLD_NAME`: run a specific chronological fold; omit to run all folds.
-- `--normalization {raw,toy,rich}`: controls preprocessing aggressiveness. Rich normalization generally improves robustness to obfuscation but may slightly dampen rare token signals.
+- `--normalization {raw,toy,rich,config}`: controls preprocessing aggressiveness. Choose `config` to load the YAML-driven normalizer (`--normalization-config`) or pair with `--normalized-cache` to reuse artifacts from `make_normalized_text`.
+- `--normalized-cache PATH`: skip on-the-fly normalization and align cached text via `row_index`. Hash validation ensures the cache matches the active YAML.
 - `--max-features N`, `--ngram-max K`: tune TF-IDF vocabulary size. Larger vocabularies can boost recall but increase runtime/memory.
-- `--bucket-col COL`, `--bucket-mult tag=factor`: enable bucket-aware oversampling to lift minority behaviors (effects mainly observed in recall for bucket-aligned labels).
+- `--bucket-col COL`: column containing bucket tags. Set to `auto` to join a cache created by `make_bucket_tags` (requires `--bucket-cache`).
+- `--bucket-cache PATH`, `--bucket-config PATH`, `--bucket-mult tag=factor`: feed cached tags and oversample specific behaviors; hashes guard against stale YAML/config mismatches.
 - `--threshold T`: probability threshold used for metrics (micro/macro F1, hamming loss). Decision-policy targets will override this in future updates.
 
 Artifacts to monitor:
@@ -44,6 +58,8 @@ Artifacts to monitor:
   --model-max-iter 400 \
   --output-dir experiments/tfidf_logreg
 ```
+
+> Tip: swap `--normalization toy` for `--normalization config --normalization-config configs/normalization.yaml --normalized-cache artifacts/normalized/train.parquet` to ensure the CLI reuses the cached normalization stage.
 
 **Key parameters and their effects:**
 - `--model-C`: inverse regularization strength. Higher values reduce bias (potentially higher recall) but risk overfitting/noisier calibration.
@@ -73,6 +89,8 @@ Artifacts to monitor:
   --output-dir experiments/tfidf_logreg
 ```
 
+Add `--bucket-col auto --bucket-cache artifacts/buckets/train.parquet --bucket-config configs/buckets.yaml --bucket-mult rare=2` when you want calibrated SVMs to oversample specific behavioral buckets sourced from the cache.
+
 **Parameter guidance:**
 - `--svm-C`: similar trade-offs as logistic C. Lower values improve generalization but may reduce recall.
 - `--svm-class-weight`: set to `balanced` to mitigate label skew; leaving it unset biases toward majority classes but may slightly improve precision.
@@ -82,6 +100,36 @@ Artifacts to monitor:
 **Result interpretation:**
 - Compare calibrated probabilities (Brier/ECE in future logging) against logistic outputs; SVM often yields sharper margins but needs calibration for trustworthy thresholds.
 - Inspect fairness slices to see if the margin-based model shifts subgroup gaps compared to logistic.
+
+---
+## Random Forest Baseline (TF-IDF + One-vs-Rest RF)
+
+**Command template:**
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+  --fold fold1_seed42 \
+  --model random_forest \
+  --normalization toy \
+  --max-features 60000 \
+  --rf-n-estimators 500 \
+  --rf-max-depth 30 \
+  --rf-class-weight balanced \
+  --rf-max-features sqrt \
+  --output-dir experiments/tfidf_logreg
+```
+
+**Parameter guidance:**
+- `--rf-n-estimators`: more trees generally improve stability but increase runtime; start with 300–600.
+- `--rf-max-depth`: cap depth (e.g., 30–50) to avoid overfitting rare classes; `None` grows full trees.
+- `--rf-max-features`: `sqrt` is a solid default; `log2` reduces variance; integers allow deterministic feature counts.
+- `--rf-class-weight`: `balanced` boosts recall on minority labels; `None` may yield higher precision on majority labels.
+- `--rf-min-samples-split/leaf`: raise these (e.g., 5/2) to smooth predictions when data is noisy.
+- `--rf-n-jobs`: set to `-1` to parallelize across cores; use smaller values on constrained machines.
+
+**Result interpretation:**
+- RF can outperform linear models on non-linear token interactions but may be slower and memory-heavy with large vocabularies.
+- Examine per-label precision/recall; trees sometimes boost `threat`/`identity_hate` recall when class weights are enabled.
+- Compare fairness slices to see if tree ensembles reduce subgroup gaps relative to linear methods.
 
 ---
 ## Decision Policies (Upcoming Enhancements)
@@ -95,7 +143,7 @@ Once implemented, additional CLI flags will allow specifying target precision/K 
 ---
 ## Future Models
 Use this section to document upcoming baselines as they land:
-- **Naive Bayes / Random Forest / XGBoost:** planned to reuse TF-IDF features with model-specific hyperparameters and calibration wrappers.
+- **Naive Bayes / XGBoost:** planned to reuse TF-IDF features with model-specific hyperparameters and calibration wrappers.
 - **LSTM / DistilBERT:** will introduce tokenization configs, learning-rate schedulers, and GPU requirements; latency and calibration measurements will be logged alongside accuracy.
 
 For each new model, add:

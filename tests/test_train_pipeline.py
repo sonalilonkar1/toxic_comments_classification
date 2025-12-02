@@ -165,3 +165,40 @@ def test_run_pipeline_with_linear_svm(tmp_path: Path, toy_data: tuple[Path, Path
 
     fold_dirs = list(output_dir.glob("fold1_seed42-*"))
     assert fold_dirs, "SVM pipeline should emit a fold directory"
+
+
+def test_run_pipeline_with_random_forest(tmp_path: Path, toy_data: tuple[Path, Path]) -> None:
+    data_path, splits_dir = toy_data
+    output_dir = tmp_path / "experiments"
+    config = TrainConfig(
+        data_path=data_path,
+        splits_dir=splits_dir,
+        output_dir=output_dir,
+        fold="fold1_seed42",
+        label_cols=["toxic", "obscene"],
+        model_type="random_forest",
+        vectorizer_params={
+            "max_features": 500,
+            "ngram_range": (1, 1),
+            "min_df": 1,
+            "max_df": 1.0,
+            "lowercase": True,
+            "strip_accents": None,
+        },
+        rf_params={
+            "n_estimators": 25,
+            "max_depth": 4,
+            "max_features": 1,
+            "class_weight": None,
+            "n_jobs": 1,
+            "random_state": 0,
+        },
+    )
+
+    results = run_training_pipeline(config)
+    assert "fold1_seed42" in results
+    metrics = results["fold1_seed42"]["overall_metrics"]
+    assert "macro_f1" in metrics
+
+    rf_dirs = list(output_dir.glob("fold1_seed42-*modelrandom_forest*"))
+    assert rf_dirs, "RandomForest pipeline should emit a model-specific directory"

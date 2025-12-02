@@ -6,6 +6,8 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+from src.data.buckets import DEFAULT_BUCKET_CONFIG_PATH
+from src.data.normalization import DEFAULT_NORMALIZATION_CONFIG_PATH
 from src.pipeline.train import TrainConfig, run_training_pipeline
 
 
@@ -44,14 +46,26 @@ def parse_args() -> argparse.Namespace:
         "--normalization",
         type=str,
         default="toy",
-        choices=["raw", "toy", "rich"],
+        choices=["raw", "toy", "rich", "config"],
         help="Text normalization strategy.",
+    )
+    parser.add_argument(
+        "--normalization-config",
+        type=Path,
+        default=DEFAULT_NORMALIZATION_CONFIG_PATH,
+        help="Normalization YAML used when --normalization config or cache builders are active.",
+    )
+    parser.add_argument(
+        "--normalized-cache",
+        type=Path,
+        default=None,
+        help="Optional parquet file from make_normalized_text; overrides on-the-fly normalization.",
     )
     parser.add_argument(
         "--model",
         type=str,
         default="logistic",
-        choices=["logistic", "svm"],
+        choices=["logistic", "svm", "random_forest"],
         help="Model type to train on TF-IDF features.",
     )
     parser.add_argument(
@@ -70,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--bucket-col",
         type=str,
         default=None,
-        help="Column containing bucket tag lists for oversampling.",
+        help="Column containing bucket tag lists for oversampling (set to 'auto' to read from cache).",
     )
     parser.add_argument(
         "--bucket-mult",
@@ -78,6 +92,24 @@ def parse_args() -> argparse.Namespace:
         default=None,
         metavar="BUCKET=FACTOR",
         help="Repeat to oversample specific buckets (e.g., rare=3).",
+    )
+    parser.add_argument(
+        "--bucket-config",
+        type=Path,
+        default=DEFAULT_BUCKET_CONFIG_PATH,
+        help="Bucket YAML used to validate cache hashes.",
+    )
+    parser.add_argument(
+        "--bucket-cache",
+        type=Path,
+        default=None,
+        help="Optional parquet file produced by make_bucket_tags.",
+    )
+    parser.add_argument(
+        "--bucket-cache-column",
+        type=str,
+        default="bucket_tags",
+        help="Column name inside the bucket cache to attach when --bucket-col auto.",
     )
     parser.add_argument(
         "--seed",
@@ -152,6 +184,48 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Number of folds for SVM calibration CV.",
     )
+    parser.add_argument(
+        "--rf-n-estimators",
+        type=int,
+        default=None,
+        help="Number of trees for RandomForest (when --model random_forest).",
+    )
+    parser.add_argument(
+        "--rf-max-depth",
+        type=int,
+        default=None,
+        help="Max tree depth for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-max-features",
+        type=str,
+        default=None,
+        help="Max features per split (e.g., sqrt, log2, auto).",
+    )
+    parser.add_argument(
+        "--rf-class-weight",
+        type=str,
+        default=None,
+        help="Class weight strategy for RandomForest (e.g., balanced).",
+    )
+    parser.add_argument(
+        "--rf-min-samples-split",
+        type=int,
+        default=None,
+        help="Minimum samples to split for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-min-samples-leaf",
+        type=int,
+        default=None,
+        help="Minimum samples per leaf for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-n-jobs",
+        type=int,
+        default=None,
+        help="Parallel jobs for RandomForest (-1 uses all cores).",
+    )
     return parser.parse_args()
 
 
@@ -183,12 +257,17 @@ def main() -> None:
         label_cols=args.labels,
         text_col=args.text_col,
         normalization=args.normalization,
+        normalization_config=args.normalization_config,
+        normalized_cache=args.normalized_cache,
         model_type=args.model,
         threshold=args.threshold,
         fairness_min_support=args.fairness_min_support,
         seed=args.seed,
         bucket_col=args.bucket_col,
         bucket_multipliers=_parse_bucket_multipliers(args.bucket_mult),
+        bucket_config=args.bucket_config,
+        bucket_cache=args.bucket_cache,
+        bucket_cache_column=args.bucket_cache_column,
     )
 
     if args.max_features is not None:
@@ -213,6 +292,20 @@ def main() -> None:
         config.svm_calibration_params["method"] = args.svm_calib_method
     if args.svm_calib_cv is not None:
         config.svm_calibration_params["cv"] = args.svm_calib_cv
+    if args.rf_n_estimators is not None:
+        config.rf_params["n_estimators"] = args.rf_n_estimators
+    if args.rf_max_depth is not None:
+        config.rf_params["max_depth"] = args.rf_max_depth
+    if args.rf_max_features is not None:
+        config.rf_params["max_features"] = args.rf_max_features
+    if args.rf_class_weight is not None:
+        config.rf_params["class_weight"] = args.rf_class_weight
+    if args.rf_min_samples_split is not None:
+        config.rf_params["min_samples_split"] = args.rf_min_samples_split
+    if args.rf_min_samples_leaf is not None:
+        config.rf_params["min_samples_leaf"] = args.rf_min_samples_leaf
+    if args.rf_n_jobs is not None:
+        config.rf_params["n_jobs"] = args.rf_n_jobs
 
     results = run_training_pipeline(config)
     for fold_name, payload in results.items():
