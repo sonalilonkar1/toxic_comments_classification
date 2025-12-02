@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
@@ -102,6 +103,39 @@ def train_multilabel_tfidf_linear_svm(
         )
         calibrated.fit(X_train_vec, y_train[:, idx])
         models[label] = calibrated
+
+    return tfidf, models
+
+
+def train_multilabel_tfidf_random_forest(
+    X_train: List[str],
+    y_train: np.ndarray,
+    label_cols: List[str],
+    vectorizer_params: Optional[Dict] = None,
+    rf_params: Optional[Dict] = None,
+) -> tuple[TfidfVectorizer, Dict[str, RandomForestClassifier]]:
+    """Train TF-IDF + RandomForest classifiers for each label."""
+
+    if vectorizer_params is None:
+        vectorizer_params = {}
+    if rf_params is None:
+        rf_params = {
+            "n_estimators": 300,
+            "max_depth": None,
+            "max_features": "sqrt",
+            "class_weight": "balanced",
+            "n_jobs": -1,
+            "random_state": 42,
+        }
+
+    tfidf = create_tfidf_vectorizer(**vectorizer_params)
+    X_train_vec = tfidf.fit_transform(X_train)
+
+    models: Dict[str, RandomForestClassifier] = {}
+    for idx, label in enumerate(label_cols):
+        clf = RandomForestClassifier(**rf_params)
+        clf.fit(X_train_vec, y_train[:, idx])
+        models[label] = clf
 
     return tfidf, models
 

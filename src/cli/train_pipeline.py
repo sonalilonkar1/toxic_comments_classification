@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=str,
         default="logistic",
-        choices=["logistic", "svm"],
+        choices=["logistic", "svm", "random_forest"],
         help="Model type to train on TF-IDF features.",
     )
     parser.add_argument(
@@ -152,6 +152,48 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Number of folds for SVM calibration CV.",
     )
+    parser.add_argument(
+        "--rf-n-estimators",
+        type=int,
+        default=None,
+        help="Number of trees for RandomForest (when --model random_forest).",
+    )
+    parser.add_argument(
+        "--rf-max-depth",
+        type=int,
+        default=None,
+        help="Max tree depth for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-max-features",
+        type=str,
+        default=None,
+        help="Max features per split (e.g., sqrt, log2, auto).",
+    )
+    parser.add_argument(
+        "--rf-class-weight",
+        type=str,
+        default=None,
+        help="Class weight strategy for RandomForest (e.g., balanced).",
+    )
+    parser.add_argument(
+        "--rf-min-samples-split",
+        type=int,
+        default=None,
+        help="Minimum samples to split for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-min-samples-leaf",
+        type=int,
+        default=None,
+        help="Minimum samples per leaf for RandomForest.",
+    )
+    parser.add_argument(
+        "--rf-n-jobs",
+        type=int,
+        default=None,
+        help="Parallel jobs for RandomForest (-1 uses all cores).",
+    )
     return parser.parse_args()
 
 
@@ -213,6 +255,20 @@ def main() -> None:
         config.svm_calibration_params["method"] = args.svm_calib_method
     if args.svm_calib_cv is not None:
         config.svm_calibration_params["cv"] = args.svm_calib_cv
+    if args.rf_n_estimators is not None:
+        config.rf_params["n_estimators"] = args.rf_n_estimators
+    if args.rf_max_depth is not None:
+        config.rf_params["max_depth"] = args.rf_max_depth
+    if args.rf_max_features is not None:
+        config.rf_params["max_features"] = args.rf_max_features
+    if args.rf_class_weight is not None:
+        config.rf_params["class_weight"] = args.rf_class_weight
+    if args.rf_min_samples_split is not None:
+        config.rf_params["min_samples_split"] = args.rf_min_samples_split
+    if args.rf_min_samples_leaf is not None:
+        config.rf_params["min_samples_leaf"] = args.rf_min_samples_leaf
+    if args.rf_n_jobs is not None:
+        config.rf_params["n_jobs"] = args.rf_n_jobs
 
     results = run_training_pipeline(config)
     for fold_name, payload in results.items():
