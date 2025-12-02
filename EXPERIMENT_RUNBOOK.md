@@ -84,6 +84,36 @@ Artifacts to monitor:
 - Inspect fairness slices to see if the margin-based model shifts subgroup gaps compared to logistic.
 
 ---
+## Random Forest Baseline (TF-IDF + One-vs-Rest RF)
+
+**Command template:**
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+  --fold fold1_seed42 \
+  --model random_forest \
+  --normalization toy \
+  --max-features 60000 \
+  --rf-n-estimators 500 \
+  --rf-max-depth 30 \
+  --rf-class-weight balanced \
+  --rf-max-features sqrt \
+  --output-dir experiments/tfidf_logreg
+```
+
+**Parameter guidance:**
+- `--rf-n-estimators`: more trees generally improve stability but increase runtime; start with 300–600.
+- `--rf-max-depth`: cap depth (e.g., 30–50) to avoid overfitting rare classes; `None` grows full trees.
+- `--rf-max-features`: `sqrt` is a solid default; `log2` reduces variance; integers allow deterministic feature counts.
+- `--rf-class-weight`: `balanced` boosts recall on minority labels; `None` may yield higher precision on majority labels.
+- `--rf-min-samples-split/leaf`: raise these (e.g., 5/2) to smooth predictions when data is noisy.
+- `--rf-n-jobs`: set to `-1` to parallelize across cores; use smaller values on constrained machines.
+
+**Result interpretation:**
+- RF can outperform linear models on non-linear token interactions but may be slower and memory-heavy with large vocabularies.
+- Examine per-label precision/recall; trees sometimes boost `threat`/`identity_hate` recall when class weights are enabled.
+- Compare fairness slices to see if tree ensembles reduce subgroup gaps relative to linear methods.
+
+---
 ## Decision Policies (Upcoming Enhancements)
 We plan to add automatic logging for:
 - **Fixed-precision thresholds** (e.g., ≥90% precision) using dev split tuning, reporting recall and alert counts on test data.
@@ -95,7 +125,7 @@ Once implemented, additional CLI flags will allow specifying target precision/K 
 ---
 ## Future Models
 Use this section to document upcoming baselines as they land:
-- **Naive Bayes / Random Forest / XGBoost:** planned to reuse TF-IDF features with model-specific hyperparameters and calibration wrappers.
+- **Naive Bayes / XGBoost:** planned to reuse TF-IDF features with model-specific hyperparameters and calibration wrappers.
 - **LSTM / DistilBERT:** will introduce tokenization configs, learning-rate schedulers, and GPU requirements; latency and calibration measurements will be logged alongside accuracy.
 
 For each new model, add:

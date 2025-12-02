@@ -82,8 +82,7 @@ from scratch in one command and then open the notebooks for richer analysis.
 - `notebooks/multilabel_analysis.ipynb` – structured notebook for multi-label
 	baselines, fairness slices, SHAP, and artifact persistence under
 	`experiments/multilabel_analysis/`
-- `src/pipeline/train.py` – reusable TF-IDF pipeline (logistic or linear SVM)
-	that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
+- `src/pipeline/train.py` – reusable TF-IDF pipeline that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
 `src/utils`) remain as placeholders so the directory structure is ready when you
@@ -111,9 +110,7 @@ Raw datasets can be large; keep them out of Git unless absolutely required. Use
 	and bucket-aware augmentation with logging.
 - 🟡 Multi-label notebook is authored and ready to run once you execute the
 	cells; results will land under `experiments/multilabel_analysis/`.
-- ✅ Reusable TF-IDF pipeline (logistic + linear SVM) lives in
-	`src/pipeline/train.py` with a CLI (`python -m src.cli.train_pipeline`) for
-	running experiments outside the notebooks, including optional bucket-aware
+- ✅ Reusable TF-IDF pipeline lives in `src/pipeline/train.py` with a CLI 	(`python -m src.cli.train_pipeline`) for running experiments outside the notebooks, including optional bucket-aware
 	oversampling controls.
 - 🔜 Integrate bucket-aware augmentation knobs into the eventual training
 	pipeline and schedule regular drift checks using the chronological folds.
@@ -136,6 +133,18 @@ To target a single fold with richer normalization:
   --normalization rich \
   --max-features 75000 \
   --output-dir experiments/tfidf_logreg
+```
+
+Run a Random Forest baseline with custom hyperparameters:
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+	--fold fold1_seed42 \
+	--model random_forest \
+	--rf-n-estimators 600 \
+	--rf-max-depth 40 \
+	--rf-class-weight balanced \
+	--output-dir experiments/tfidf_logreg
 ```
 
 Apply bucket-aware oversampling by pointing to a bucket column (list-like or JSON

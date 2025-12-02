@@ -18,6 +18,7 @@ from src.features.tfidf import (
     oversample_buckets,
     train_multilabel_tfidf_linear_svm,
     train_multilabel_tfidf_logistic,
+    train_multilabel_tfidf_random_forest,
 )
 from src.utils.metrics import (
     compute_fairness_slices,
@@ -62,6 +63,17 @@ DEFAULT_SVM_CALIBRATION: Dict[str, object] = {
     "cv": 3,
 }
 
+DEFAULT_RF: Dict[str, object] = {
+    "n_estimators": 400,
+    "max_depth": None,
+    "max_features": "sqrt",
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "class_weight": "balanced",
+    "n_jobs": -1,
+    "random_state": 42,
+}
+
 Normalizer = Optional[Callable[[str], str]]
 
 NORMALIZERS: Dict[str, Normalizer] = {
@@ -92,6 +104,7 @@ class TrainConfig:
     model_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_MODEL.copy())
     svm_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM.copy())
     svm_calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
+    rf_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_RF.copy())
 
     def __post_init__(self) -> None:
         self.data_path = Path(self.data_path)
@@ -130,8 +143,8 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
         target_folds = sorted(fold_frames.keys())
 
     model_type = config.model_type.lower()
-    if model_type not in {"logistic", "svm"}:
-        raise ValueError("model_type must be one of {'logistic', 'svm'}")
+    if model_type not in {"logistic", "svm", "random_forest"}:
+        raise ValueError("model_type must be one of {'logistic', 'svm', 'random_forest'}")
 
     results: Dict[str, Dict[str, object]] = {}
     for fold_name in target_folds:
@@ -191,6 +204,14 @@ def _train_single_fold(
             svm_params=config.svm_params,
             calibration_params=config.svm_calibration_params,
         )
+    elif config.model_type == "random_forest":
+        tfidf, label_models = train_multilabel_tfidf_random_forest(
+            X_train.tolist(),
+            y_train,
+            label_cols,
+            vectorizer_params=config.vectorizer_params,
+            rf_params=config.rf_params,
+        )
     else:
         tfidf, label_models = train_multilabel_tfidf_logistic(
             X_train.tolist(),
@@ -243,7 +264,10 @@ def _train_single_fold(
 
 def _prepare_fold_dir(base_dir: Path, fold_name: str, config: TrainConfig) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    dir_name = f"{fold_name}-seed{config.seed}-norm{config.normalization}-{timestamp}"
+    dir_name = (
+        f"{fold_name}-seed{config.seed}-norm{config.normalization}-"
+        f"model{config.model_type}-{timestamp}"
+    )
     fold_dir = base_dir / dir_name
     fold_dir.mkdir(parents=True, exist_ok=True)
     return fold_dir
