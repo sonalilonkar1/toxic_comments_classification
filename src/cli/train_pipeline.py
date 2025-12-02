@@ -6,6 +6,8 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+from src.data.buckets import DEFAULT_BUCKET_CONFIG_PATH
+from src.data.normalization import DEFAULT_NORMALIZATION_CONFIG_PATH
 from src.pipeline.train import TrainConfig, run_training_pipeline
 
 
@@ -44,8 +46,20 @@ def parse_args() -> argparse.Namespace:
         "--normalization",
         type=str,
         default="toy",
-        choices=["raw", "toy", "rich"],
+        choices=["raw", "toy", "rich", "config"],
         help="Text normalization strategy.",
+    )
+    parser.add_argument(
+        "--normalization-config",
+        type=Path,
+        default=DEFAULT_NORMALIZATION_CONFIG_PATH,
+        help="Normalization YAML used when --normalization config or cache builders are active.",
+    )
+    parser.add_argument(
+        "--normalized-cache",
+        type=Path,
+        default=None,
+        help="Optional parquet file from make_normalized_text; overrides on-the-fly normalization.",
     )
     parser.add_argument(
         "--model",
@@ -70,7 +84,7 @@ def parse_args() -> argparse.Namespace:
         "--bucket-col",
         type=str,
         default=None,
-        help="Column containing bucket tag lists for oversampling.",
+        help="Column containing bucket tag lists for oversampling (set to 'auto' to read from cache).",
     )
     parser.add_argument(
         "--bucket-mult",
@@ -78,6 +92,24 @@ def parse_args() -> argparse.Namespace:
         default=None,
         metavar="BUCKET=FACTOR",
         help="Repeat to oversample specific buckets (e.g., rare=3).",
+    )
+    parser.add_argument(
+        "--bucket-config",
+        type=Path,
+        default=DEFAULT_BUCKET_CONFIG_PATH,
+        help="Bucket YAML used to validate cache hashes.",
+    )
+    parser.add_argument(
+        "--bucket-cache",
+        type=Path,
+        default=None,
+        help="Optional parquet file produced by make_bucket_tags.",
+    )
+    parser.add_argument(
+        "--bucket-cache-column",
+        type=str,
+        default="bucket_tags",
+        help="Column name inside the bucket cache to attach when --bucket-col auto.",
     )
     parser.add_argument(
         "--seed",
@@ -225,12 +257,17 @@ def main() -> None:
         label_cols=args.labels,
         text_col=args.text_col,
         normalization=args.normalization,
+        normalization_config=args.normalization_config,
+        normalized_cache=args.normalized_cache,
         model_type=args.model,
         threshold=args.threshold,
         fairness_min_support=args.fairness_min_support,
         seed=args.seed,
         bucket_col=args.bucket_col,
         bucket_multipliers=_parse_bucket_multipliers(args.bucket_mult),
+        bucket_config=args.bucket_config,
+        bucket_cache=args.bucket_cache,
+        bucket_cache_column=args.bucket_cache_column,
     )
 
     if args.max_features is not None:

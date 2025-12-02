@@ -59,6 +59,22 @@ from scratch in one command and then open the notebooks for richer analysis.
 	 This reads `data/raw/train.csv` and writes JSON index files to
 	 `data/splits/`.
 
+5. **(Optional) Precompute normalization + bucket caches:**
+
+	 ```bash
+	 ./scripts/run_python.sh -m src.cli.make_normalized_text \
+	   --data-path data/raw/train.csv \
+	   --output-path artifacts/normalized/train.parquet
+	 ./scripts/run_python.sh -m src.cli.make_bucket_tags \
+	   --data-path data/raw/train.csv \
+	   --normalized-cache artifacts/normalized/train.parquet \
+	   --output-path artifacts/buckets/train.parquet
+	 ```
+
+	 These CLIs read the YAML profiles under `configs/normalization.yaml` and
+	 `configs/buckets.yaml`, cache normalized text + bucket tags, and store
+	 metadata (with config hashes) alongside the parquet outputs.
+
 ## What's in `scripts/`
 
 - `00_bootstrap_project.sh` – orchestrates env creation, optional PyTorch
@@ -76,12 +92,16 @@ from scratch in one command and then open the notebooks for richer analysis.
 
 - `src/cli/download_data.py` – logic shared by the download script
 - `src/cli/make_splits.py` – chronological fold generation
+- `src/cli/make_normalized_text.py` – normalization cache builder driven by `configs/normalization.yaml`
+- `src/cli/make_bucket_tags.py` – bucket-tag cache builder driven by `configs/buckets.yaml`
 - `notebooks/data_explore.ipynb` – end-to-end exploratory workbook (label
 	prevalence, normalization, TF-IDF logistic baseline, error taxonomy, bucket
 	augmentation; writes logs to `experiments/bucket_augmentation/outputs/`)
 - `notebooks/multilabel_analysis.ipynb` – structured notebook for multi-label
 	baselines, fairness slices, SHAP, and artifact persistence under
 	`experiments/multilabel_analysis/`
+- `src/data/normalization.py` – config-driven emoji/obfuscation-aware normalizer used by both CLIs and pipeline
+- `src/data/buckets.py` – YAML-driven bucket tagging helpers + cache loaders
 - `src/pipeline/train.py` – reusable TF-IDF pipeline that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
@@ -96,7 +116,9 @@ add new functionality from the notebooks or CLI utilities.
 	from `data_explore.ipynb`
 - `experiments/multilabel_analysis/` – placeholder for multi-label artifacts
 - `experiments/tfidf_logreg/` – CLI-driven TF-IDF + logistic pipeline outputs
-- `artifacts/` – general-purpose directory for future model checkpoints or
+- `artifacts/normalized/` – parquet + metadata from `make_normalized_text` (one per split/dataset)
+- `artifacts/buckets/` – cached bucket tags aligned with row indices for CLI consumption
+- `artifacts/` – general-purpose directory for additional model checkpoints or
 	reports
 
 Raw datasets can be large; keep them out of Git unless absolutely required. Use
@@ -110,10 +132,8 @@ Raw datasets can be large; keep them out of Git unless absolutely required. Use
 	and bucket-aware augmentation with logging.
 - 🟡 Multi-label notebook is authored and ready to run once you execute the
 	cells; results will land under `experiments/multilabel_analysis/`.
-- ✅ Reusable TF-IDF pipeline lives in `src/pipeline/train.py` with a CLI 	(`python -m src.cli.train_pipeline`) for running experiments outside the notebooks, including optional bucket-aware
-	oversampling controls.
-- 🔜 Integrate bucket-aware augmentation knobs into the eventual training
-	pipeline and schedule regular drift checks using the chronological folds.
+- ✅ Reusable TF-IDF pipeline lives in `src/pipeline/train.py` with a CLI 	(`python -m src.cli.train_pipeline`) for running experiments outside the notebooks, including normalization-config + bucket-cache wiring.
+- ✅ Config-driven normalization (`configs/normalization.yaml`) and bucket tagging (`configs/buckets.yaml`) now produce cacheable artifacts under `artifacts/`, and the CLI validates hashes before training.
 
 ## Run the reusable pipeline
 
@@ -157,6 +177,38 @@ encoded) and specifying repeatable multipliers:
 	--bucket-mult misogyny=2 \
 	--output-dir experiments/tfidf_logreg
 ```
+
+### Precompute normalization + bucket caches
+
+For reproducible experiments (and to mirror the richer preprocessing described in
+`proposal.md`), you can now materialize normalization and bucket artifacts before
+training:
+
+```bash
+# 1) Normalize text with the YAML profile under configs/normalization.yaml
+./scripts/run_python.sh -m src.cli.make_normalized_text \
+	--data-path data/raw/train.csv \
+	--output-path artifacts/normalized/train.parquet
+
+# 2) Generate bucket tags with configs/buckets.yaml (can reuse the normalized cache)
+./scripts/run_python.sh -m src.cli.make_bucket_tags \
+	--data-path data/raw/train.csv \
+	--normalized-cache artifacts/normalized/train.parquet \
+	--output-path artifacts/buckets/train.parquet
+
+# 3) Train while consuming the cached artifacts
+./scripts/run_python.sh -m src.cli.train_pipeline \
+	--fold fold1_seed42 \
+	--normalization config \
+	--normalization-config configs/normalization.yaml \
+	--normalized-cache artifacts/normalized/train.parquet \
+	--bucket-col auto \
+	--bucket-cache artifacts/buckets/train.parquet \
+	--output-dir experiments/tfidf_logreg
+```
+
+The CLI automatically validates cache hashes so you can catch stale artifacts
+before running expensive experiments.
 
 This repo now gets you an environment, the datasets, deterministic splits, and
 actionable notebooks to evaluate baselines and prep the production pipeline.
