@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import FeatureUnion
 from sklearn.linear_model import LogisticRegression
 
 from src.features.tfidf import create_tfidf_vectorizer
@@ -17,7 +18,7 @@ def train_multilabel_tfidf_logistic(
     label_cols: List[str],
     vectorizer_params: Optional[Dict] = None,
     model_params: Optional[Dict] = None,
-) -> Tuple[TfidfVectorizer, Dict[str, LogisticRegression]]:
+) -> Tuple[Union[TfidfVectorizer, FeatureUnion], Dict[str, LogisticRegression]]:
     """Train TF-IDF + LogisticRegression models for each label."""
 
     if vectorizer_params is None:
