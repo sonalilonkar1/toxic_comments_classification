@@ -104,6 +104,7 @@ from scratch in one command and then open the notebooks for richer analysis.
 - `src/data/buckets.py` – YAML-driven bucket tagging helpers + cache loaders
 - `src/features/tfidf.py` – TF-IDF vectorizer factory plus bucket oversampling helpers shared by all classical trainers
 - `src/models/tfidf_logistic.py`, `src/models/tfidf_svm.py`, `src/models/tfidf_random_forest.py` – dedicated TF-IDF trainer modules that the pipeline + notebooks import
+- `src/models/bert_transformer.py` – HuggingFace Trainer-powered multi-label fine-tuning helper invoked via `--model bert`
 - `src/pipeline/train.py` – reusable TF-IDF pipeline that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
 
 Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
@@ -136,6 +137,7 @@ Raw datasets can be large; keep them out of Git unless absolutely required. Use
 	cells; results will land under `experiments/multilabel_analysis/`.
 - ✅ Reusable TF-IDF pipeline lives in `src/pipeline/train.py` with a CLI 	(`python -m src.cli.train_pipeline`) for running experiments outside the notebooks, including normalization-config + bucket-cache wiring.
 - ✅ Config-driven normalization (`configs/normalization.yaml`) and bucket tagging (`configs/buckets.yaml`) now produce cacheable artifacts under `artifacts/`, and the CLI validates hashes before training.
+- 🟡 HuggingFace transformer fine-tuning is available through `--model bert` for users with GPU resources (or patient CPU runs); defaults target `bert-base-uncased` with sensible hyperparameters.
 
 ## Run the reusable pipeline
 
@@ -179,6 +181,22 @@ encoded) and specifying repeatable multipliers:
 	--bucket-mult misogyny=2 \
 	--output-dir experiments/tfidf_logreg
 ```
+
+Fine-tune a transformer baseline (defaults to `bert-base-uncased`) with custom sequence length and batch sizes. GPU acceleration is recommended but optional:
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+	--fold fold1_seed42 \
+	--model bert \
+	--bert-model-name bert-base-uncased \
+	--bert-max-length 256 \
+	--bert-train-batch-size 8 \
+	--bert-eval-batch-size 16 \
+	--bert-learning-rate 2e-5 \
+	--bert-num-epochs 3 \
+	--output-dir experiments/tfidf_logreg
+```
+Add `--bert-fp16` when running on CUDA devices to enable mixed-precision training via HuggingFace Trainer.
 
 ### Precompute normalization + bucket caches
 

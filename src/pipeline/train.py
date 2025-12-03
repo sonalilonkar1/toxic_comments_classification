@@ -55,6 +55,20 @@ DEFAULT_VECTORIZER: Dict[str, object] = {
     "strip_accents": "unicode",
 }
 
+DEFAULT_BERT: Dict[str, object] = {
+    "model_name": "bert-base-uncased",
+    "max_length": 256,
+    "train_batch_size": 8,
+    "eval_batch_size": 8,
+    "learning_rate": 2e-5,
+    "weight_decay": 0.01,
+    "num_epochs": 3.0,
+    "warmup_ratio": 0.06,
+    "gradient_accumulation_steps": 1,
+    "fp16": False,
+    "logging_steps": 50,
+    "save_total_limit": 1,
+}
 DEFAULT_MODEL: Dict[str, object] = {
     "max_iter": 400,
     "class_weight": "balanced",
@@ -120,6 +134,7 @@ class TrainConfig:
     svm_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM.copy())
     svm_calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
     rf_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_RF.copy())
+    bert_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_BERT.copy())
 
     def __post_init__(self) -> None:
         self.data_path = Path(self.data_path)
@@ -166,8 +181,9 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
         target_folds = sorted(fold_frames.keys())
 
     model_type = config.model_type.lower()
-    if model_type not in {"logistic", "svm", "random_forest"}:
-        raise ValueError("model_type must be one of {'logistic', 'svm', 'random_forest'}")
+    if model_type not in {"logistic", "svm", "random_forest", "bert"}:
+        raise ValueError("model_type must be one of {'logistic', 'svm', 'random_forest', 'bert'}")
+    config.model_type = model_type
 
     normalizer, normalizer_hash = _prepare_normalizer(config)
     bucket_hash = _prepare_bucket_hash(config)
@@ -223,9 +239,34 @@ def _train_single_fold(
     X_test = _resolve_text_series(test_df, text_col, normalizer, config, normalizer_hash)
 
     y_train = train_df[label_cols].values.astype(int)
+    y_dev = dev_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
 
-    if config.model_type == "svm":
+    tfidf = None
+    label_models: Optional[Dict[str, object]] = None
+    extra_metadata: Optional[Dict[str, object]] = None
+
+    if config.model_type == "bert":
+        from src.models.bert_transformer import train_multilabel_bert
+
+        bert_result = train_multilabel_bert(
+            train_texts=X_train.tolist(),
+            train_labels=y_train,
+            dev_texts=X_dev.tolist(),
+            dev_labels=y_dev,
+            test_texts=X_test.tolist(),
+            label_cols=label_cols,
+            model_dir=fold_dir / "models" / "bert",
+            params=config.bert_params,
+            seed=config.seed,
+        )
+        test_probs = bert_result.test_probs
+        extra_metadata = {
+            "trainer_metrics": bert_result.trainer_metrics,
+            "transformer_model_path": str(bert_result.model_path),
+            "transformer_tokenizer_path": str(bert_result.tokenizer_path),
+        }
+    elif config.model_type == "svm":
         tfidf, label_models = train_multilabel_tfidf_linear_svm(
             X_train.tolist(),
             y_train,
@@ -251,11 +292,12 @@ def _train_single_fold(
             model_params=config.model_params,
         )
 
-    X_test_vec = tfidf.transform(X_test.tolist())
-    test_probs = {
-        label: model.predict_proba(X_test_vec)[:, 1]
-        for label, model in label_models.items()
-    }
+    if config.model_type != "bert" and tfidf is not None and label_models is not None:
+        X_test_vec = tfidf.transform(X_test.tolist())
+        test_probs = {
+            label: model.predict_proba(X_test_vec)[:, 1]
+            for label, model in label_models.items()
+        }
     y_test_pred = probs_to_preds(test_probs, threshold=config.threshold)
 
     overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols)
@@ -283,6 +325,7 @@ def _train_single_fold(
         label_models=label_models,
         text_col=text_col,
         model_type=config.model_type,
+        extra_metadata=extra_metadata,
     )
 
     return {
@@ -422,6 +465,7 @@ def _persist_artifacts(
     label_models,
     text_col: str,
     model_type: str,
+    extra_metadata: Optional[Dict[str, object]] = None,
 ) -> None:
     overall_path = fold_dir / "overall_metrics.json"
     per_label_path = fold_dir / "per_label_metrics.csv"
@@ -456,12 +500,26 @@ def _persist_artifacts(
         "bucket_cache": str(config.bucket_cache) if config.bucket_cache else None,
         "bucket_cache_column": config.bucket_cache_column,
     })
+    metadata_path = None
+    if extra_metadata:
+        metadata_path = fold_dir / "trainer_metadata.json"
+        serializable = {}
+        for key, value in extra_metadata.items():
+            if isinstance(value, Path):
+                serializable[key] = str(value)
+            else:
+                serializable[key] = value
+        with open(metadata_path, "w", encoding="utf-8") as handle:
+            json.dump(serializable, handle, indent=2)
+        payload["trainer_metadata"] = str(metadata_path)
     with open(config_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
 
-    joblib.dump(tfidf, model_dir / "tfidf.joblib")
-    for label, model in label_models.items():
-        joblib.dump(model, model_dir / f"{label}.joblib")
+    if tfidf is not None:
+        joblib.dump(tfidf, model_dir / "tfidf.joblib")
+    if label_models:
+        for label, model in label_models.items():
+            joblib.dump(model, model_dir / f"{label}.joblib")
 
 
 def _build_predictions_frame(
