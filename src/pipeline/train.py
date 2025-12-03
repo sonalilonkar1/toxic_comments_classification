@@ -33,6 +33,8 @@ from src.models.tfidf_svm import train_multilabel_tfidf_linear_svm
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
+    compute_top_k_metrics,
+    find_precision_thresholds,
     probs_to_preds,
 )
 
@@ -47,12 +49,15 @@ DEFAULT_LABELS: List[str] = [
 ]
 
 DEFAULT_VECTORIZER: Dict[str, object] = {
-    "max_features": 50000,
+    "max_features": 150000,
     "ngram_range": (1, 2),
     "min_df": 5,
     "max_df": 0.95,
     "lowercase": True,
     "strip_accents": "unicode",
+    "analyzer": "both",
+    "char_ngram_range": (3, 5),
+    "char_max_features": 50000,
 }
 
 DEFAULT_MODEL: Dict[str, object] = {
@@ -107,6 +112,8 @@ class TrainConfig:
     normalization_config: Optional[Path] = DEFAULT_NORMALIZATION_CONFIG_PATH
     normalized_cache: Optional[Path] = None
     threshold: float = 0.5
+    target_precision: Optional[float] = 0.90
+    top_k: int = 1000
     fairness_min_support: int = 50
     seed: int = 42
     bucket_col: Optional[str] = None
@@ -251,14 +258,42 @@ def _train_single_fold(
             model_params=config.model_params,
         )
 
+    # Validate on Dev to find thresholds
+    X_dev_vec = tfidf.transform(X_dev.tolist())
+    dev_probs = {
+        label: model.predict_proba(X_dev_vec)[:, 1]
+        for label, model in label_models.items()
+    }
+
+    # Determine thresholds
+    if config.target_precision is not None:
+        y_dev = dev_df[label_cols].values.astype(int)
+        thresholds = find_precision_thresholds(
+            y_dev, dev_probs, label_cols, target_precision=config.target_precision
+        )
+        # Store thresholds in metrics for reference
+        # We'll save them in a separate artifact or just log them
+        # (logging omitted for brevity, but they are used for prediction)
+    else:
+        thresholds = config.threshold
+
     X_test_vec = tfidf.transform(X_test.tolist())
     test_probs = {
         label: model.predict_proba(X_test_vec)[:, 1]
         for label, model in label_models.items()
     }
-    y_test_pred = probs_to_preds(test_probs, threshold=config.threshold)
+    y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
 
     overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols)
+    
+    # Compute Top-K metrics
+    top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
+    overall_metrics.update(top_k_metrics)
+    
+    # Add thresholds to overall metrics for record keeping if they are a dict
+    if isinstance(thresholds, dict):
+        overall_metrics.update({f"thresh_{k}": v for k, v in thresholds.items()})
+
     fairness_df = compute_fairness_slices(
         test_df,
         y_test,
