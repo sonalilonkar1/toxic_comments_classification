@@ -132,6 +132,40 @@ Add `--bucket-col auto --bucket-cache artifacts/buckets/train.parquet --bucket-c
 - Compare fairness slices to see if tree ensembles reduce subgroup gaps relative to linear methods.
 
 ---
+## Transformer Baseline (HuggingFace BERT fine-tuning)
+
+**Command template (tweak batch sizes / epochs for your hardware):**
+
+```bash
+./scripts/run_python.sh -m src.cli.train_pipeline \
+  --fold fold1_seed42 \
+  --model bert \
+  --bert-model-name bert-base-uncased \
+  --bert-max-length 256 \
+  --bert-train-batch-size 8 \
+  --bert-eval-batch-size 16 \
+  --bert-learning-rate 2e-5 \
+  --bert-num-epochs 3 \
+  --bert-warmup-ratio 0.06 \
+  --output-dir experiments/tfidf_logreg
+```
+
+Add `--bert-fp16` when running on GPUs with CUDA to enable mixed precision; on CPU keep it disabled. Bucket caches/normalization flags still apply (text normalization occurs before tokenization).
+
+**Parameter guidance:**
+- `--bert-model-name`: swap in `distilbert-base-uncased` or domain-specific checkpoints as needed.
+- `--bert-max-length`: 128–256 usually balances coverage and speed; longer sequences improve recall on verbose comments at the cost of memory.
+- `--bert-train-batch-size` / `--bert-eval-batch-size`: tune based on GPU memory. Combine with `--bert-gradient-accumulation` to simulate larger batches.
+- `--bert-learning-rate`, `--bert-num-epochs`, `--bert-warmup-ratio`: standard fine-tuning knobs; increase epochs to squeeze more recall, but monitor overfitting via dev metrics logged by HuggingFace Trainer.
+- `--bert-weight-decay`: defaults to 0.01; lower it when the model overfits quickly.
+- `--bert-save-total-limit`: keep it at 1–2 to avoid filling disk with checkpoints.
+
+**Result interpretation:**
+- Transformer runs emit `trainer_metadata.json` containing Trainer eval metrics and checkpoint paths. Final weights/tokenizer live under each fold’s `models/bert/` directory.
+- Compare micro/macro F1 against TF-IDF baselines; expect higher recall on difficult labels once enough compute is allocated.
+- Reuse `test_predictions.csv` for SHAP/interpretability experiments (upcoming) or fairness slices to see if contextual modeling narrows subgroup gaps.
+
+---
 ## Decision Policies (Upcoming Enhancements)
 We plan to add automatic logging for:
 - **Fixed-precision thresholds** (e.g., ≥90% precision) using dev split tuning, reporting recall and alert counts on test data.
