@@ -143,7 +143,7 @@ class TrainConfig:
     vectorizer_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_VECTORIZER.copy())
     model_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_MODEL.copy())
     svm_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM.copy())
-    svm_calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
+    calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
     rf_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_RF.copy())
     nb_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_NB.copy())
     xgb_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_XGB.copy())
@@ -260,7 +260,7 @@ def _train_single_fold(
             label_cols,
             vectorizer_params=config.vectorizer_params,
             svm_params=config.svm_params,
-            calibration_params=config.svm_calibration_params,
+            calibration_params=config.calibration_params,
         )
     elif config.model_type == "random_forest":
         tfidf, label_models = train_multilabel_tfidf_random_forest(
@@ -293,6 +293,7 @@ def _train_single_fold(
             label_cols,
             vectorizer_params=config.vectorizer_params,
             model_params=config.model_params,
+            calibration_params=config.calibration_params, # Reuse generic calibration params
         )
 
     # Validate on Dev to find thresholds
