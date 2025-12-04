@@ -28,8 +28,10 @@ from src.data.normalization import (
 from src.data.preprocess import rich_normalize, toy_normalize
 from src.features.tfidf import oversample_buckets
 from src.models.tfidf_logistic import train_multilabel_tfidf_logistic
+from src.models.tfidf_naive_bayes import train_multilabel_tfidf_naive_bayes
 from src.models.tfidf_random_forest import train_multilabel_tfidf_random_forest
 from src.models.tfidf_svm import train_multilabel_tfidf_linear_svm
+from src.models.tfidf_xgboost import train_multilabel_tfidf_xgboost
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
@@ -89,6 +91,22 @@ DEFAULT_RF: Dict[str, object] = {
     "random_state": 42,
 }
 
+DEFAULT_NB: Dict[str, object] = {
+    "alpha": 1.0,
+    "fit_prior": True,
+}
+
+DEFAULT_XGB: Dict[str, object] = {
+    "n_estimators": 200,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "n_jobs": -1,
+    "random_state": 42,
+    # scale_pos_weight is often crucial for imbalance, but harder to set globally for multilabel
+}
+
 Normalizer = Optional[Callable[[str], str]]
 
 NORMALIZERS: Dict[str, Normalizer] = {
@@ -127,6 +145,8 @@ class TrainConfig:
     svm_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM.copy())
     svm_calibration_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_SVM_CALIBRATION.copy())
     rf_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_RF.copy())
+    nb_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_NB.copy())
+    xgb_params: Dict[str, object] = field(default_factory=lambda: DEFAULT_XGB.copy())
 
     def __post_init__(self) -> None:
         self.data_path = Path(self.data_path)
@@ -173,8 +193,9 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
         target_folds = sorted(fold_frames.keys())
 
     model_type = config.model_type.lower()
-    if model_type not in {"logistic", "svm", "random_forest"}:
-        raise ValueError("model_type must be one of {'logistic', 'svm', 'random_forest'}")
+    valid_models = {"logistic", "svm", "random_forest", "naive_bayes", "xgboost"}
+    if model_type not in valid_models:
+        raise ValueError(f"model_type must be one of {valid_models}")
 
     normalizer, normalizer_hash = _prepare_normalizer(config)
     bucket_hash = _prepare_bucket_hash(config)
@@ -248,6 +269,22 @@ def _train_single_fold(
             label_cols,
             vectorizer_params=config.vectorizer_params,
             rf_params=config.rf_params,
+        )
+    elif config.model_type == "naive_bayes":
+        tfidf, label_models = train_multilabel_tfidf_naive_bayes(
+            X_train.tolist(),
+            y_train,
+            label_cols,
+            vectorizer_params=config.vectorizer_params,
+            nb_params=config.nb_params,
+        )
+    elif config.model_type == "xgboost":
+        tfidf, label_models = train_multilabel_tfidf_xgboost(
+            X_train.tolist(),
+            y_train,
+            label_cols,
+            vectorizer_params=config.vectorizer_params,
+            xgb_params=config.xgb_params,
         )
     else:
         tfidf, label_models = train_multilabel_tfidf_logistic(
