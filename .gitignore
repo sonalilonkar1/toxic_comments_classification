@@ -1,9 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-
 kaggle.json
 .ipynb_checkpoints/
 proposal.md
 plan.md
 .DS_Store
+data/raw
