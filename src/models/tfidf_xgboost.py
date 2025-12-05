@@ -23,7 +23,7 @@ def train_multilabel_tfidf_xgboost(
     vectorizer_params: Optional[Dict] = None,
     xgb_params: Optional[Dict] = None,
 ) -> Tuple[Union[TfidfVectorizer, FeatureUnion], Dict[str, XGBClassifier]]:
-    """Train TF-IDF + XGBoost classifiers for each label."""
+    """Train TF-IDF + XGBoost classifiers for each label (Binary Relevance)."""
 
     if XGBClassifier is None:
         raise ImportError(
