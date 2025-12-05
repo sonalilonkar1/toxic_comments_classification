@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -233,6 +234,8 @@ def _train_single_deep_fold(
     y_dev = dev_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
     
+    latency_sec = 0.0
+    
     # Train Model
     if config.model_type == "bert":
         trainer, tokenizer = train_bert_model(
@@ -279,7 +282,10 @@ def _train_single_deep_fold(
         from src.models.deep.bert import ToxicDataset
         test_dataset = ToxicDataset(test_encodings) # No labels needed for prediction, but nice to have
         
+        t0 = time.time()
         test_out = trainer.predict(test_dataset)
+        latency_sec = time.time() - t0
+        
         test_logits = test_out.predictions
         test_probs_arr = 1.0 / (1.0 + np.exp(-test_logits))
         test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
@@ -410,7 +416,10 @@ def _train_single_deep_fold(
             thresholds = 0.5
         
         # Predict on Test
+        t0 = time.time()
         test_probs_arr, _ = predict_lstm(model, preprocessor, X_test)
+        latency_sec = time.time() - t0
+        
         test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
         
         # Save model state dict (for compatibility)
@@ -434,6 +443,12 @@ def _train_single_deep_fold(
     y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
     
     overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols, prob_dict=test_probs)
+    
+    n_samples = len(y_test)
+    latency_per_1k = (latency_sec / n_samples) * 1000 if n_samples > 0 else 0.0
+    overall_metrics["latency_seconds_per_1k"] = latency_per_1k
+    overall_metrics["inference_time_total"] = latency_sec
+    
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
     overall_metrics.update(top_k_metrics)
     

@@ -12,6 +12,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     brier_score_loss,
+    roc_auc_score,
+    average_precision_score,
 )
 
 
@@ -135,6 +137,20 @@ def compute_multilabel_metrics(
     per_label_rows = []
     brier_scores = []
     ece_scores = []
+    
+    # Calculate global AUCs if probabilities available
+    if prob_dict is not None:
+        y_probs_arr = np.column_stack([prob_dict[label] for label in label_cols])
+        try:
+            overall_metrics["macro_roc_auc"] = roc_auc_score(y_true, y_probs_arr, average="macro")
+            overall_metrics["micro_roc_auc"] = roc_auc_score(y_true, y_probs_arr, average="micro")
+            overall_metrics["macro_pr_auc"] = average_precision_score(y_true, y_probs_arr, average="macro")
+            overall_metrics["micro_pr_auc"] = average_precision_score(y_true, y_probs_arr, average="micro")
+        except ValueError:
+            overall_metrics["macro_roc_auc"] = 0.0
+            overall_metrics["micro_roc_auc"] = 0.0
+            overall_metrics["macro_pr_auc"] = 0.0
+            overall_metrics["micro_pr_auc"] = 0.0
 
     for idx, label in enumerate(label_cols):
         prec, rec, f1, support = precision_recall_fscore_support(
@@ -147,17 +163,26 @@ def compute_multilabel_metrics(
             "recall": rec,
             "f1": f1,
             "support": int(y_true[:, idx].sum()),
+            "alert_volume": int(y_pred[:, idx].sum()),
         }
 
-        # Calibration metrics
+        # Calibration & AUC metrics
         if prob_dict is not None and label in prob_dict:
             probs = prob_dict[label]
             bs = brier_score_loss(y_true[:, idx], probs)
             ece = expected_calibration_error(y_true[:, idx], probs)
+            
             row["brier_score"] = bs
             row["ece"] = ece
             brier_scores.append(bs)
             ece_scores.append(ece)
+            
+            try:
+                row["roc_auc"] = roc_auc_score(y_true[:, idx], probs)
+                row["pr_auc"] = average_precision_score(y_true[:, idx], probs)
+            except ValueError:
+                row["roc_auc"] = 0.0
+                row["pr_auc"] = 0.0
         
         per_label_rows.append(row)
 
