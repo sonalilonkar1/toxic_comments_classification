@@ -559,6 +559,9 @@ def _build_predictions_frame(
     for idx, label in enumerate(label_cols):
         payload[f"{label}_prob"] = test_probs[label]
         payload[f"{label}_pred"] = y_test_pred[:, idx]
+        # Include Ground Truth for Error Analysis
+        if label in test_df.columns:
+            payload[label] = test_df[label].values
 
     return pd.DataFrame(payload)
 

@@ -299,6 +299,7 @@ def _persist_deep_artifacts(
     for i, label in enumerate(label_cols):
         preds_df[f"{label}_prob"] = test_probs[label]
         preds_df[f"{label}_pred"] = y_test_pred[:, i]
+        # Ground truth is already in test_df copy, so no extra work needed
     preds_df.to_csv(preds_path, index=False)
     
     # Save Config
