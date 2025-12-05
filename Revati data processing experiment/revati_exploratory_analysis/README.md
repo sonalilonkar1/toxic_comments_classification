@@ -1,11 +1,11 @@
-# Ramya's Exploratory Data Analysis
+# Exploratory Data Analysis
 
 This directory contains the exploratory data analysis (EDA) assets for the Jigsaw toxic comment classification dataset.
 
 ## Key Deliverables
 
-- `eda_ramya.ipynb`: interactive notebook capturing all analyses
-- `eda_ramya.py`: script variant for programmatic execution
+- `eda_revati.ipynb`: interactive notebook capturing all analyses
+- `eda_revati.py`: script variant for programmatic execution
 - `plots/`: saved visualizations generated during the EDA workflow
 - `summary_stats.json`: comprehensive statistics and metrics
 
@@ -20,26 +20,26 @@ This directory contains the exploratory data analysis (EDA) assets for the Jigsa
 
 From the project root:
 ```bash
-cd /Users/ramyag/Desktop/toxic_comments_classification
-python3 "Ramya data experiment and processing/ramya_exploratory_analysis/eda_ramya.py"
+cd /Users/revatig/Desktop/toxic_comments_classification
+python3 "revati data experiment and processing/revati_exploratory_analysis/eda_revati.py"
 ```
 
 Or from inside this directory:
 ```bash
-cd "Ramya data experiment and processing/ramya_exploratory_analysis"
-python3 eda_ramya.py
+cd "revati data experiment and processing/revati_exploratory_analysis"
+python3 eda_revati.py
 ```
 
 ### Option 2: Run with Custom Data Path
 
 If your `train.csv` is in a different location:
 ```bash
-python3 eda_ramya.py --data-path "path/to/your/train.csv"
+python3 eda_revati.py --data-path "path/to/your/train.csv"
 ```
 
 ### Option 3: Use Jupyter Notebook
 
-Open `eda_ramya.ipynb` in Jupyter Notebook or JupyterLab and run all cells.
+Open `eda_revati.ipynb` in Jupyter Notebook or JupyterLab and run all cells.
 
 ## Output
 
