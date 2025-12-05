@@ -380,7 +380,7 @@ def _train_single_deep_fold(
                 "learning_rate": config.lstm_params.get("learning_rate", 0.001),
             },
             "embeddings": {
-                "embedding_path": config.lstm_params.get("embedding_path"),
+                "embedding_path": str(config.lstm_params.get("embedding_path")) if config.lstm_params.get("embedding_path") else None,
                 "freeze_embeddings": config.lstm_params.get("freeze_embeddings", False),
             },
             "label_cols": label_cols,
@@ -464,6 +464,20 @@ def _prepare_fold_dir(base_dir: Path, fold_name: str, config: DeepTrainConfig) -
     return fold_dir
 
 
+def _convert_paths_to_strings(obj):
+    """Recursively convert Path objects to strings in a dictionary or list."""
+    if isinstance(obj, Path):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: _convert_paths_to_strings(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_paths_to_strings(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(_convert_paths_to_strings(item) for item in obj)
+    else:
+        return obj
+
+
 def _persist_deep_artifacts(
     fold_dir: Path,
     fold_name: str,
@@ -500,22 +514,23 @@ def _persist_deep_artifacts(
     
     # Save Config (includes all config including lstm_params)
     payload = asdict(config)
-    # Convert Path objects to strings for JSON serialization
-    for key, value in payload.items():
-        if isinstance(value, Path):
-            payload[key] = str(value)
-            
-    # Also handle specific known Path fields that might be nested or missed
+    # Convert all Path objects to strings recursively
+    payload = _convert_paths_to_strings(payload)
+    # Explicitly convert Path fields (in case they weren't caught)
     payload["data_path"] = str(config.data_path)
     payload["splits_dir"] = str(config.splits_dir)
     payload["output_dir"] = str(config.output_dir)
+    if payload.get("normalization_config"):
+        payload["normalization_config"] = str(payload["normalization_config"])
+    if payload.get("lstm_config_path"):
+        payload["lstm_config_path"] = str(payload["lstm_config_path"])
     payload["fold_name"] = fold_name
     payload["label_cols"] = label_cols
     
-    # Ensure lstm_params are properly serialized
+    # Ensure lstm_params are properly serialized (already converted by _convert_paths_to_strings)
     if config.model_type == "lstm" and "lstm_params" in payload:
-        # Convert any Path objects to strings
-        lstm_params = payload["lstm_params"].copy()
+        lstm_params = payload["lstm_params"]
+        # Double-check Path objects are strings
         if "embedding_path" in lstm_params and lstm_params["embedding_path"]:
             lstm_params["embedding_path"] = str(lstm_params["embedding_path"])
         if "resume_from" in lstm_params and lstm_params["resume_from"]:
