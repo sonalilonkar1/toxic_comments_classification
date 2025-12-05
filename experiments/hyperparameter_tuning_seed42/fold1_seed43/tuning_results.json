@@ -1,0 +1,113 @@
+{
+  "logistic": {
+    "best_params": {
+      "toxic": {
+        "C": 10.0,
+        "max_iter": 200
+      },
+      "severe_toxic": {
+        "C": 10.0,
+        "max_iter": 200
+      },
+      "obscene": {
+        "C": 10.0,
+        "max_iter": 200
+      },
+      "threat": {
+        "C": 10.0,
+        "max_iter": 200
+      },
+      "insult": {
+        "C": 10.0,
+        "max_iter": 200
+      },
+      "identity_hate": {
+        "C": 10.0,
+        "max_iter": 200
+      }
+    },
+    "best_scores": {
+      "toxic": 0.8778737606271821,
+      "severe_toxic": 0.6850854456578865,
+      "obscene": 0.887370931209444,
+      "threat": 0.6800400610517152,
+      "insult": 0.8321843823896087,
+      "identity_hate": 0.7001517619499508
+    },
+    "model_type": "logistic"
+  },
+  "svm": {
+    "best_params": {
+      "toxic": {
+        "C": 1.0,
+        "max_iter": 1000
+      },
+      "severe_toxic": {
+        "C": 10.0,
+        "max_iter": 1000
+      },
+      "obscene": {
+        "C": 1.0,
+        "max_iter": 1000
+      },
+      "threat": {
+        "C": 10.0,
+        "max_iter": 1000
+      },
+      "insult": {
+        "C": 1.0,
+        "max_iter": 1000
+      },
+      "identity_hate": {
+        "C": 10.0,
+        "max_iter": 1000
+      }
+    },
+    "best_scores": {
+      "toxic": 0.8789858450762132,
+      "severe_toxic": 0.677523159235065,
+      "obscene": 0.8893759412314824,
+      "threat": 0.7011739251224025,
+      "insult": 0.831711509662679,
+      "identity_hate": 0.7039753058711297
+    },
+    "model_type": "svm"
+  },
+  "random_forest": {
+    "best_params": {
+      "toxic": {
+        "max_depth": null,
+        "n_estimators": 200
+      },
+      "severe_toxic": {
+        "max_depth": null,
+        "n_estimators": 200
+      },
+      "obscene": {
+        "max_depth": null,
+        "n_estimators": 200
+      },
+      "threat": {
+        "max_depth": null,
+        "n_estimators": 100
+      },
+      "insult": {
+        "max_depth": null,
+        "n_estimators": 200
+      },
+      "identity_hate": {
+        "max_depth": null,
+        "n_estimators": 100
+      }
+    },
+    "best_scores": {
+      "toxic": 0.8275722314199271,
+      "severe_toxic": 0.5278966781285733,
+      "obscene": 0.8786181592615031,
+      "threat": 0.5375407261493116,
+      "insult": 0.8021111472817816,
+      "identity_hate": 0.6043744794155056
+    },
+    "model_type": "random_forest"
+  }
+}

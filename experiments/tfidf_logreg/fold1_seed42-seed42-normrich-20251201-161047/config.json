@@ -1,0 +1,49 @@
+{
+  "data_path": "data/raw/train.csv",
+  "splits_dir": "data/splits",
+  "output_dir": "experiments/tfidf_logreg",
+  "fold": "fold1_seed42",
+  "label_cols": [
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate"
+  ],
+  "text_col": "comment_text",
+  "normalization": "rich",
+  "threshold": 0.5,
+  "fairness_min_support": 50,
+  "seed": 42,
+  "bucket_col": null,
+  "bucket_multipliers": null,
+  "model_type": "svm",
+  "vectorizer_params": {
+    "max_features": 80000,
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 5,
+    "max_df": 0.95,
+    "lowercase": true,
+    "strip_accents": "unicode"
+  },
+  "model_params": {
+    "max_iter": 400,
+    "class_weight": "balanced",
+    "solver": "liblinear",
+    "C": 1.0
+  },
+  "svm_params": {
+    "C": 0.75,
+    "class_weight": "balanced",
+    "max_iter": 3000
+  },
+  "svm_calibration_params": {
+    "method": "sigmoid",
+    "cv": 5
+  },
+  "active_fold": "fold1_seed42"
+}
