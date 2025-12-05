@@ -230,7 +230,7 @@ def parse_args() -> argparse.Namespace:
         "--bert-model-name",
         type=str,
         default=None,
-        help="HuggingFace model checkpoint (e.g., bert-base-uncased).",
+        help="HuggingFace model checkpoint (default: distilbert-base-uncased).",
     )
     parser.add_argument(
         "--bert-max-length",
