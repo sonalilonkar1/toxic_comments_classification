@@ -25,7 +25,7 @@ Document any special requirements in `plan.md` before coding so they align with 
    - Expose calibration parameters (method, CV folds) so CLI can tune them.
 
 ### 2.2 Neural / Transformer models
-1. Create a new module (e.g., `src/models/lstm.py`, `src/models/transformer.py`).
+1. Create a new module (e.g., `src/models/lstm.py`, `src/models/transformer.py`). The BERT fine-tuning pipeline in `src/models/bert_transformer.py` is a working reference for tokenizer setup, Trainer configuration, and metric logging.
 2. Implement data loading/tokenization, model definition, training loop, and evaluation hooks. Reuse shared utilities (`src/utils/metrics.py`) for evaluation.
 3. Provide serialization steps for model weights and any tokenizers.
 
