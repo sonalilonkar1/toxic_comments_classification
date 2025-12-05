@@ -1,0 +1,38 @@
+version: 1
+# LSTM hyperparameters for multi-label toxic comment classification
+
+# Preprocessing parameters
+vocab_size: 10000          # Maximum vocabulary size (most frequent words)
+max_length: 200            # Maximum sequence length (tokens)
+
+# Model architecture
+embedding_dim: 128          # Word embedding dimension
+hidden_dim: 128            # LSTM hidden dimension
+num_layers: 2              # Number of LSTM layers
+dropout: 0.3               # Dropout rate
+bidirectional: true         # Use bidirectional LSTM
+
+# Training parameters
+batch_size: 32             # Training batch size
+epochs: 10                 # Number of training epochs
+learning_rate: 0.001       # Learning rate (Adam optimizer)
+
+# Pre-trained embeddings (optional)
+embedding_path: null       # Path to pre-trained embeddings (GloVe/Word2Vec)
+                           # Examples:
+                           #   - "data/embeddings/glove.6B.100d.txt"
+                           #   - "data/embeddings/word2vec.bin"
+freeze_embeddings: false   # Freeze embedding layer during training (only if using pre-trained)
+
+# Checkpointing and resuming
+resume_from: null          # Path to checkpoint file to resume training from (optional)
+                           # Example: "experiments/lstm/fold1/checkpoints/checkpoint_epoch_5.pt"
+checkpoint_interval: 1     # Save checkpoint every N epochs (1 = every epoch, 5 = every 5 epochs)
+
+# Hyperparameter tuning ranges (for future use)
+tuning_vocab_sizes: [5000, 10000, 20000]
+tuning_max_lengths: [100, 200, 300]
+tuning_hidden_dims: [64, 128, 256]
+tuning_learning_rates: [0.0001, 0.001, 0.01]
+tuning_dropouts: [0.2, 0.3, 0.4, 0.5]
+

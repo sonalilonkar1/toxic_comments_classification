@@ -1,4 +1,4 @@
-"""Ramya's exploratory data analysis for the Jigsaw toxic comment dataset."""
+"""revati's exploratory data analysis for the Jigsaw toxic comment dataset."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ LABEL_COLUMNS = [
 ]
 
 ROOT = Path(__file__).resolve().parents[1]
-ANALYSIS_DIR = ROOT / "ramya_exploratory_analysis"
+ANALYSIS_DIR = ROOT / "revati_exploratory_analysis"
 PLOTS_DIR = ANALYSIS_DIR / "plots"
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -257,7 +257,7 @@ def run_eda(data_path: Path):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Ramya's toxic comment EDA")
+    parser = argparse.ArgumentParser(description="Run revati's toxic comment EDA")
     parser.add_argument(
         "--data-path",
         default=str(ANALYSIS_DIR / "jigsaw-toxic-comment-classification-challenge" / "train.csv"),

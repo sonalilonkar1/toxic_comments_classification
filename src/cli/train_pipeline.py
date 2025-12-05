@@ -6,9 +6,13 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+import yaml
+
 from src.data.buckets import DEFAULT_BUCKET_CONFIG_PATH
 from src.data.normalization import DEFAULT_NORMALIZATION_CONFIG_PATH
 from src.pipeline.train import TrainConfig, run_training_pipeline
+
+DEFAULT_NAIVE_BAYES_CONFIG_PATH = Path("configs/naive_bayes.yaml")
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,7 +69,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=str,
         default="logistic",
-        choices=["logistic", "svm", "random_forest", "bert"],
+        choices=["logistic", "svm", "random_forest", "naive_bayes", "xgboost", "bert"],
         help="Model type to train (TF-IDF variants or transformer).",
     )
     parser.add_argument(
@@ -227,6 +231,19 @@ def parse_args() -> argparse.Namespace:
         help="Parallel jobs for RandomForest (-1 uses all cores).",
     )
     parser.add_argument(
+        "--nb-alpha",
+        type=float,
+        default=None,
+        help="Alpha (smoothing parameter) for Naive Bayes (when --model naive_bayes).",
+    )
+    parser.add_argument(
+        "--nb-fit-prior",
+        type=str,
+        default=None,
+        choices=["true", "false"],
+        help="Whether to learn class prior probabilities for Naive Bayes (true/false).",
+    )
+    parser.add_argument(
         "--bert-model-name",
         type=str,
         default=None,
@@ -377,6 +394,27 @@ def main() -> None:
         config.rf_params["min_samples_leaf"] = args.rf_min_samples_leaf
     if args.rf_n_jobs is not None:
         config.rf_params["n_jobs"] = args.rf_n_jobs
+    # Load Naive Bayes config from YAML automatically (only for naive_bayes model)
+    if config.model_type == "naive_bayes":
+        config_path = DEFAULT_NAIVE_BAYES_CONFIG_PATH
+        # Resolve path relative to project root
+        if not config_path.is_absolute():
+            project_root = Path(__file__).resolve().parents[2]
+            config_path = project_root / config_path
+        # Load YAML and extract hyperparameters if config file exists
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                nb_config = yaml.safe_load(f)
+            config.nb_params.update({
+                "alpha": nb_config.get("alpha", 1.0),
+                "fit_prior": nb_config.get("fit_prior", True),
+            })
+    
+    # CLI arguments override config file values
+    if args.nb_alpha is not None:
+        config.nb_params["alpha"] = args.nb_alpha
+    if args.nb_fit_prior is not None:
+        config.nb_params["fit_prior"] = args.nb_fit_prior.lower() == "true"
     if args.bert_model_name is not None:
         config.bert_params["model_name"] = args.bert_model_name
     if args.bert_max_length is not None:
