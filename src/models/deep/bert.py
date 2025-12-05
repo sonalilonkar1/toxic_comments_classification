@@ -1,7 +1,7 @@
 """BERT/DistilBERT model definitions and training utilities."""
 
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,9 @@ from transformers import (
     EvalPrediction,
 )
 from sklearn.metrics import f1_score, roc_auc_score, average_precision_score
+
+from src.models.deep.loss import FocalLoss
+
 
 class ToxicDataset(Dataset):
     """PyTorch Dataset for Toxic Comments."""
@@ -32,6 +35,28 @@ class ToxicDataset(Dataset):
 
     def __len__(self):
         return len(self.encodings["input_ids"])
+
+
+class CustomTrainer(Trainer):
+    """Custom Trainer to support Focal Loss."""
+    
+    def __init__(self, loss_type: str = "bce", loss_params: Optional[Dict] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.loss_type = loss_type
+        self.loss_params = loss_params or {}
+        
+        if self.loss_type == "focal":
+            self.loss_fct = FocalLoss(**self.loss_params)
+            print(f"Using Focal Loss with params: {self.loss_params}")
+        else:
+            self.loss_fct = torch.nn.BCEWithLogitsLoss()
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        loss = self.loss_fct(logits, labels)
+        return (loss, outputs) if return_outputs else loss
 
 
 def compute_metrics(p: EvalPrediction) -> Dict[str, float]:
@@ -67,6 +92,8 @@ def train_bert_model(
     learning_rate: float = 2e-5,
     seed: int = 42,
     fp16: bool = False,
+    loss_type: str = "bce",
+    loss_params: Optional[Dict] = None,
 ) -> Tuple[Trainer, AutoTokenizer]:
     """Fine-tune a BERT/DistilBERT model for multi-label classification."""
     
@@ -115,15 +142,16 @@ def train_bert_model(
         push_to_hub=False,
     )
     
-    trainer = Trainer(
+    trainer = CustomTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
+        loss_type=loss_type,
+        loss_params=loss_params,
     )
     
     trainer.train()
     
     return trainer, tokenizer
-
