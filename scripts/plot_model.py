@@ -33,7 +33,15 @@ plt.rcParams["figure.figsize"] = (12, 6)
 def load_model_metrics(experiments_dir: Path, model_name: str) -> Dict:
     """Load summary metrics for a model across all folds."""
     model_dir = experiments_dir / model_name
-    summary_path = model_dir / "summary_metrics.json"
+    
+    # Special handling for naive_bayes (results are in tfidf_logreg directory)
+    if model_name == "naive_bayes":
+        summary_path = experiments_dir / "tfidf_logreg" / "naive_bayes_summary_metrics.json"
+        if not summary_path.exists():
+            # Try to create it from individual fold results
+            return {}
+    else:
+        summary_path = model_dir / "summary_metrics.json"
     
     if not summary_path.exists():
         return {}
@@ -58,8 +66,13 @@ def load_model_metrics(experiments_dir: Path, model_name: str) -> Dict:
 
 def load_per_label_metrics(experiments_dir: Path, model_name: str) -> pd.DataFrame:
     """Load and aggregate per-label metrics across all folds."""
-    model_dir = experiments_dir / model_name
-    fold_dirs = sorted(model_dir.glob("fold*"))
+    # Special handling for naive_bayes (results are in tfidf_logreg directory)
+    if model_name == "naive_bayes":
+        model_dir = experiments_dir / "tfidf_logreg"
+        fold_dirs = sorted([d for d in model_dir.glob("fold*-*naive_bayes*") if d.is_dir()])
+    else:
+        model_dir = experiments_dir / model_name
+        fold_dirs = sorted(model_dir.glob("fold*"))
     
     all_per_label = []
     for fold_dir in fold_dirs:
@@ -88,8 +101,13 @@ def load_per_label_metrics(experiments_dir: Path, model_name: str) -> pd.DataFra
 
 def load_test_predictions(experiments_dir: Path, model_name: str, fold: str = "fold1") -> Optional[pd.DataFrame]:
     """Load test predictions for a specific fold."""
-    model_dir = experiments_dir / model_name
-    fold_dirs = sorted(model_dir.glob(f"{fold}*"))
+    # Special handling for naive_bayes (results are in tfidf_logreg directory)
+    if model_name == "naive_bayes":
+        model_dir = experiments_dir / "tfidf_logreg"
+        fold_dirs = sorted([d for d in model_dir.glob(f"{fold}*-*naive_bayes*") if d.is_dir()])
+    else:
+        model_dir = experiments_dir / model_name
+        fold_dirs = sorted(model_dir.glob(f"{fold}*"))
     
     if not fold_dirs:
         return None
@@ -374,19 +392,43 @@ def main():
     
     args = parser.parse_args()
     
-    # Create output directory
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    
     model_name = args.model
-    model_dir = args.experiments_dir / model_name
     
-    if not model_dir.exists():
-        print(f"❌ Model directory not found: {model_dir}")
-        return
+    # Special handling for naive_bayes
+    if model_name == "naive_bayes":
+        summary_path = args.experiments_dir / "tfidf_logreg" / "naive_bayes_summary_metrics.json"
+        if not summary_path.exists():
+            print(f"❌ naive_bayes_summary_metrics.json not found. Creating it...")
+            # Create summary from individual folds
+            import json
+            nb_folds = sorted([d for d in (args.experiments_dir / "tfidf_logreg").glob("fold*-*naive_bayes*") if d.is_dir()])
+            if not nb_folds:
+                print(f"❌ No Naive Bayes fold directories found")
+                return
+            summary = {}
+            for fold_dir in nb_folds:
+                metrics_path = fold_dir / "overall_metrics.json"
+                if metrics_path.exists():
+                    fold_name = fold_dir.name.split("-")[0]  # Extract fold1, fold2, fold3
+                    with open(metrics_path, "r") as f:
+                        summary[fold_name] = json.load(f)
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(summary_path, "w") as f:
+                json.dump(summary, f, indent=2)
+            print(f"✅ Created {summary_path} with {len(summary)} folds")
+    else:
+        model_dir = args.experiments_dir / model_name
+        if not model_dir.exists():
+            print(f"❌ Model directory not found: {model_dir}")
+            return
+        summary_path = model_dir / "summary_metrics.json"
+        if not summary_path.exists():
+            print(f"❌ summary_metrics.json not found for {model_name}")
+            return
     
-    if not (model_dir / "summary_metrics.json").exists():
-        print(f"❌ summary_metrics.json not found for {model_name}")
-        return
+    # Create output directory with model subfolder
+    model_output_dir = args.output_dir / model_name
+    model_output_dir.mkdir(parents=True, exist_ok=True)
     
     print(f"📊 Loading metrics for {model_name}...")
     
@@ -399,14 +441,15 @@ def main():
         return
     
     # Generate all plots
-    print("\n📈 Generating visualizations...")
-    create_metrics_table(model_data, model_name, args.output_dir)
-    plot_per_label_f1(per_label_df, model_name, args.output_dir)
-    plot_pr_curves(model_name, args.experiments_dir, args.output_dir, args.fold)
-    plot_recall_at_90_precision(model_name, args.experiments_dir, args.output_dir, args.fold)
-    plot_precision_at_top1000(model_data, model_name, args.output_dir)
+    print(f"\n📈 Generating visualizations...")
+    print(f"   Output directory: {model_output_dir}")
+    create_metrics_table(model_data, model_name, model_output_dir)
+    plot_per_label_f1(per_label_df, model_name, model_output_dir)
+    plot_pr_curves(model_name, args.experiments_dir, model_output_dir, args.fold)
+    plot_recall_at_90_precision(model_name, args.experiments_dir, model_output_dir, args.fold)
+    plot_precision_at_top1000(model_data, model_name, model_output_dir)
     
-    print(f"\n✅ All plots saved to: {args.output_dir}")
+    print(f"\n✅ All plots saved to: {model_output_dir}")
 
 
 if __name__ == "__main__":
