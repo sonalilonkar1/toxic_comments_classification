@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 from sklearn.metrics import f1_score, roc_auc_score, average_precision_score
 
 from src.features.lstm_preprocessing import LSTMPreprocessor
+from src.models.deep.loss import FocalLoss
 
 
 class SequenceDataset(Dataset):
@@ -169,6 +170,8 @@ def train_lstm_model(
     device: Optional[str] = None,
     resume_from: Optional[str] = None,
     checkpoint_interval: int = 1,
+    loss_type: str = "bce",
+    loss_params: Optional[Dict[str, float]] = None,
 ) -> Tuple[MultiLabelLSTM, LSTMPreprocessor]:
     """
     Train an LSTM model for multi-label classification.
@@ -195,6 +198,8 @@ def train_lstm_model(
         device: Device to use ('cuda', 'cpu', or None for auto-detect)
         resume_from: Path to checkpoint file to resume training from (optional)
         checkpoint_interval: Save checkpoint every N epochs (default: 1, saves every epoch)
+        loss_type: 'bce' or 'focal'
+        loss_params: Dictionary of parameters for loss function (e.g., {'alpha': 0.25, 'gamma': 2.0})
     
     Returns:
         Tuple of (trained model, preprocessor)
@@ -238,7 +243,14 @@ def train_lstm_model(
     model = model.to(device)
     
     # Loss and optimizer
-    criterion = nn.BCEWithLogitsLoss()
+    if loss_type == "focal":
+        params = loss_params or {}
+        criterion = FocalLoss(**params)
+        print(f"Using Focal Loss with params: {params}")
+    else:
+        criterion = nn.BCEWithLogitsLoss()
+        
+    criterion = criterion.to(device) # Ensure criterion is on device (though usually stateless)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
     # Resume from checkpoint if provided
