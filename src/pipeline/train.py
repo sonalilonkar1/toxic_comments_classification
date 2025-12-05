@@ -31,7 +31,7 @@ from src.models.tfidf_logistic import train_multilabel_tfidf_logistic
 from src.models.tfidf_naive_bayes import train_multilabel_tfidf_naive_bayes
 from src.models.tfidf_random_forest import train_multilabel_tfidf_random_forest
 from src.models.tfidf_svm import train_multilabel_tfidf_linear_svm
-from src.models.tfidf_xgboost import train_multilabel_tfidf_xgboost
+# XGBoost import is lazy - only imported when xgboost model is used
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
@@ -320,6 +320,8 @@ def _train_single_fold(
             nb_params=config.nb_params,
         )
     elif config.model_type == "xgboost":
+        # Lazy import to avoid XGBoost dependency issues when not using xgboost
+        from src.models.tfidf_xgboost import train_multilabel_tfidf_xgboost
         tfidf, label_models = train_multilabel_tfidf_xgboost(
             X_train.tolist(),
             y_train,
