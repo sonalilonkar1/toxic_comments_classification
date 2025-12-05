@@ -93,6 +93,8 @@ class DeepTrainConfig:
     bert_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_BERT_PARAMS.copy())
     lstm_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_LSTM_PARAMS.copy())
     lstm_config_path: Optional[Path] = DEFAULT_LSTM_CONFIG_PATH  # Path to LSTM YAML config
+    loss_type: str = "bce"
+    loss_params: Dict[str, float] = field(default_factory=dict)
     
     # Evaluation
     target_precision: Optional[float] = 0.90
@@ -246,7 +248,9 @@ def _train_single_deep_fold(
             epochs=config.bert_params.get("epochs", 3),
             learning_rate=config.bert_params.get("learning_rate", 2e-5),
             fp16=config.bert_params.get("fp16", False),
-            seed=config.seed
+            seed=config.seed,
+            loss_type=config.loss_type,
+            loss_params=config.loss_params,
         )
         
         # Predict on Dev to set thresholds
@@ -347,6 +351,8 @@ def _train_single_deep_fold(
             seed=config.seed,
             resume_from=resume_from,
             checkpoint_interval=config.lstm_params.get("checkpoint_interval", 1),
+            loss_type=config.loss_type,
+            loss_params=config.loss_params,
         )
         
         # Save preprocessor (tokenizer) and model
@@ -378,6 +384,8 @@ def _train_single_deep_fold(
                 "batch_size": config.lstm_params.get("batch_size", 32),
                 "epochs": config.lstm_params.get("epochs", 10),
                 "learning_rate": config.lstm_params.get("learning_rate", 0.001),
+                "loss_type": config.loss_type,
+                "loss_params": config.loss_params,
             },
             "embeddings": {
                 "embedding_path": str(config.lstm_params.get("embedding_path")) if config.lstm_params.get("embedding_path") else None,
@@ -542,4 +550,3 @@ def _persist_deep_artifacts(
         
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
-
