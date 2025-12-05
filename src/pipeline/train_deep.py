@@ -500,6 +500,12 @@ def _persist_deep_artifacts(
     
     # Save Config (includes all config including lstm_params)
     payload = asdict(config)
+    # Convert Path objects to strings for JSON serialization
+    for key, value in payload.items():
+        if isinstance(value, Path):
+            payload[key] = str(value)
+            
+    # Also handle specific known Path fields that might be nested or missed
     payload["data_path"] = str(config.data_path)
     payload["splits_dir"] = str(config.splits_dir)
     payload["output_dir"] = str(config.output_dir)
@@ -516,6 +522,9 @@ def _persist_deep_artifacts(
             lstm_params["resume_from"] = str(lstm_params["resume_from"])
         payload["lstm_params"] = lstm_params
     
+    if config.normalization_config:
+        payload["normalization_config"] = str(config.normalization_config)
+        
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
