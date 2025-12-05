@@ -425,7 +425,7 @@ def _train_single_deep_fold(
     # Calculate Metrics
     y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
     
-    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols)
+    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols, prob_dict=test_probs)
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
     overall_metrics.update(top_k_metrics)
     
