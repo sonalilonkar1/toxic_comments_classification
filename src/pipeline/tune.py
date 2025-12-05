@@ -218,13 +218,13 @@ if __name__ == "__main__":
     for seed in seeds:
         logging.info(f"Starting hyperparameter tuning for seed: {seed}")
         config = TrainConfig(
-            fold=f"fold2_seed{seed}",  # Tune only fold 2 for this seed
+            fold=f"fold3_seed{seed}",  # Tune only fold 3 for this seed
             model_type="logistic",  # Will be overridden per model
             seed=seed,
-            output_dir=Path(f"experiments/hyperparameter_tuning_fold2_seed{seed}"),
+            output_dir=Path(f"experiments/hyperparameter_tuning_fold3_seed{seed}"),
         )
 
-        tuning_output_dir = Path(f"experiments/hyperparameter_tuning_fold2_seed{seed}")
+        tuning_output_dir = Path(f"experiments/hyperparameter_tuning_fold3_seed{seed}")
         results = run_hyperparameter_tuning(
             config=config,
             param_grids=param_grids,
@@ -233,4 +233,4 @@ if __name__ == "__main__":
             n_iter=None,  # Use GridSearchCV for exact search
         )
 
-        logging.info(f"Tuning completed for fold2_seed{seed}. Check {tuning_output_dir}/ for results.")
+        logging.info(f"Tuning completed for fold3_seed{seed}. Check {tuning_output_dir}/ for results.")

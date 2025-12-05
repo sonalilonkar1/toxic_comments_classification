@@ -1,10 +1,6 @@
 .venv/
 __pycache__/
 *.pyc
-experiments/
-artifacts/
-reports/figures/*.png
-reports/tables/*.csv
 kaggle.json
 .ipynb_checkpoints/
 proposal.md
