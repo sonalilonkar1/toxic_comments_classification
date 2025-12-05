@@ -13,9 +13,11 @@ from sklearn.metrics import (
 )
 
 
+from typing import Union
+
 def probs_to_preds(
     prob_dict: dict[str, np.ndarray],
-    threshold: float | dict[str, float] = 0.5
+    threshold: Union[float, dict[str, float]] = 0.5
 ) -> np.ndarray:
     """Convert per-label probabilities to binary predictions using threshold(s)."""
     preds = []
