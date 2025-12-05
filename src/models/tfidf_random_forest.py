@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import FeatureUnion
 
 from src.features.tfidf import create_tfidf_vectorizer
 
@@ -17,7 +18,7 @@ def train_multilabel_tfidf_random_forest(
     label_cols: List[str],
     vectorizer_params: Optional[Dict] = None,
     rf_params: Optional[Dict] = None,
-) -> Tuple[TfidfVectorizer, Dict[str, RandomForestClassifier]]:
+) -> Tuple[Union[TfidfVectorizer, FeatureUnion], Dict[str, RandomForestClassifier]]:
     """Train TF-IDF + RandomForest classifiers for each label."""
 
     if vectorizer_params is None:

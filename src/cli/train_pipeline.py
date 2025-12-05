@@ -1,4 +1,4 @@
-"""CLI entry point for the TF-IDF + logistic training pipeline."""
+"""CLI entry point for the reusable toxic-comment training pipeline."""
 
 from __future__ import annotations
 
@@ -65,8 +65,8 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=str,
         default="logistic",
-        choices=["logistic", "svm", "random_forest"],
-        help="Model type to train on TF-IDF features.",
+        choices=["logistic", "svm", "random_forest", "bert"],
+        help="Model type to train (TF-IDF variants or transformer).",
     )
     parser.add_argument(
         "--threshold",
@@ -226,6 +226,77 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Parallel jobs for RandomForest (-1 uses all cores).",
     )
+    parser.add_argument(
+        "--bert-model-name",
+        type=str,
+        default=None,
+        help="HuggingFace model checkpoint (e.g., bert-base-uncased).",
+    )
+    parser.add_argument(
+        "--bert-max-length",
+        type=int,
+        default=None,
+        help="Maximum token length for transformer inputs.",
+    )
+    parser.add_argument(
+        "--bert-train-batch-size",
+        type=int,
+        default=None,
+        help="Per-device train batch size for BERT runs.",
+    )
+    parser.add_argument(
+        "--bert-eval-batch-size",
+        type=int,
+        default=None,
+        help="Per-device eval batch size for BERT runs.",
+    )
+    parser.add_argument(
+        "--bert-learning-rate",
+        type=float,
+        default=None,
+        help="Learning rate for transformer fine-tuning.",
+    )
+    parser.add_argument(
+        "--bert-weight-decay",
+        type=float,
+        default=None,
+        help="Weight decay for transformer fine-tuning.",
+    )
+    parser.add_argument(
+        "--bert-num-epochs",
+        type=float,
+        default=None,
+        help="Number of epochs for transformer fine-tuning.",
+    )
+    parser.add_argument(
+        "--bert-warmup-ratio",
+        type=float,
+        default=None,
+        help="Warmup ratio for scheduler.",
+    )
+    parser.add_argument(
+        "--bert-gradient-accumulation",
+        type=int,
+        default=None,
+        help="Gradient accumulation steps for transformer runs.",
+    )
+    parser.add_argument(
+        "--bert-fp16",
+        action="store_true",
+        help="Enable fp16 mixed precision when CUDA is available.",
+    )
+    parser.add_argument(
+        "--bert-logging-steps",
+        type=int,
+        default=None,
+        help="Logging steps for Trainer.",
+    )
+    parser.add_argument(
+        "--bert-save-total-limit",
+        type=int,
+        default=None,
+        help="Maximum checkpoints to keep for transformer runs.",
+    )
     return parser.parse_args()
 
 
@@ -306,6 +377,30 @@ def main() -> None:
         config.rf_params["min_samples_leaf"] = args.rf_min_samples_leaf
     if args.rf_n_jobs is not None:
         config.rf_params["n_jobs"] = args.rf_n_jobs
+    if args.bert_model_name is not None:
+        config.bert_params["model_name"] = args.bert_model_name
+    if args.bert_max_length is not None:
+        config.bert_params["max_length"] = args.bert_max_length
+    if args.bert_train_batch_size is not None:
+        config.bert_params["train_batch_size"] = args.bert_train_batch_size
+    if args.bert_eval_batch_size is not None:
+        config.bert_params["eval_batch_size"] = args.bert_eval_batch_size
+    if args.bert_learning_rate is not None:
+        config.bert_params["learning_rate"] = args.bert_learning_rate
+    if args.bert_weight_decay is not None:
+        config.bert_params["weight_decay"] = args.bert_weight_decay
+    if args.bert_num_epochs is not None:
+        config.bert_params["num_epochs"] = args.bert_num_epochs
+    if args.bert_warmup_ratio is not None:
+        config.bert_params["warmup_ratio"] = args.bert_warmup_ratio
+    if args.bert_gradient_accumulation is not None:
+        config.bert_params["gradient_accumulation_steps"] = args.bert_gradient_accumulation
+    if args.bert_fp16:
+        config.bert_params["fp16"] = True
+    if args.bert_logging_steps is not None:
+        config.bert_params["logging_steps"] = args.bert_logging_steps
+    if args.bert_save_total_limit is not None:
+        config.bert_params["save_total_limit"] = args.bert_save_total_limit
 
     results = run_training_pipeline(config)
     for fold_name, payload in results.items():
