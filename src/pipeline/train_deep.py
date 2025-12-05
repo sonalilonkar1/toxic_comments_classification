@@ -11,6 +11,7 @@ from typing import Dict, Iterable, List, Optional, Any
 import numpy as np
 import pandas as pd
 import torch
+import yaml
 
 from src.data.dataset import load_fold_frames
 from src.data.normalization import (
@@ -18,8 +19,17 @@ from src.data.normalization import (
     build_normalizer,
     load_normalization_config,
 )
+
+DEFAULT_LSTM_CONFIG_PATH = Path("configs/lstm.yaml")
 from src.data.preprocess import rich_normalize, toy_normalize
 from src.models.deep.bert import train_bert_model
+from src.models.deep.lstm import train_lstm_model, predict_lstm
+from src.features.lstm_preprocessing import (
+    LSTMPreprocessor,
+    load_glove_embeddings,
+    load_word2vec_embeddings,
+    preprocess_texts_for_lstm,
+)
 from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
@@ -46,6 +56,23 @@ DEFAULT_BERT_PARAMS: Dict[str, Any] = {
     "fp16": False,
 }
 
+DEFAULT_LSTM_PARAMS: Dict[str, Any] = {
+    "vocab_size": 10000,
+    "max_length": 200,
+    "embedding_dim": 128,
+    "hidden_dim": 128,
+    "num_layers": 2,
+    "dropout": 0.3,
+    "bidirectional": True,
+    "batch_size": 32,
+    "epochs": 10,
+    "learning_rate": 0.001,
+    "embedding_path": None,  # Path to pre-trained embeddings (GloVe/Word2Vec)
+    "freeze_embeddings": False,
+    "resume_from": None,  # Path to checkpoint to resume from
+    "checkpoint_interval": 1,  # Save checkpoint every N epochs
+}
+
 @dataclass
 class DeepTrainConfig:
     """Configuration for Deep Learning training pipeline."""
@@ -64,6 +91,8 @@ class DeepTrainConfig:
     # Model config
     model_type: str = "bert" # 'bert' or 'lstm'
     bert_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_BERT_PARAMS.copy())
+    lstm_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_LSTM_PARAMS.copy())
+    lstm_config_path: Optional[Path] = DEFAULT_LSTM_CONFIG_PATH  # Path to LSTM YAML config
     
     # Evaluation
     target_precision: Optional[float] = 0.90
@@ -77,6 +106,40 @@ class DeepTrainConfig:
         self.output_dir = Path(self.output_dir)
         if self.normalization_config:
             self.normalization_config = Path(self.normalization_config)
+        if self.lstm_config_path:
+            self.lstm_config_path = Path(self.lstm_config_path)
+        
+        # Load LSTM config from YAML if model_type is lstm and config file exists
+        if self.model_type == "lstm" and self.lstm_config_path:
+            # Resolve path relative to project root if not absolute
+            if not self.lstm_config_path.is_absolute():
+                # Try to find project root (go up from src/pipeline)
+                project_root = Path(__file__).resolve().parents[2]
+                config_path = project_root / self.lstm_config_path
+            else:
+                config_path = self.lstm_config_path
+            
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    lstm_config = yaml.safe_load(f)
+                
+                # Update lstm_params with values from YAML (preserve defaults if not in YAML)
+                self.lstm_params.update({
+                    "vocab_size": lstm_config.get("vocab_size", self.lstm_params.get("vocab_size", 10000)),
+                    "max_length": lstm_config.get("max_length", self.lstm_params.get("max_length", 200)),
+                    "embedding_dim": lstm_config.get("embedding_dim", self.lstm_params.get("embedding_dim", 128)),
+                    "hidden_dim": lstm_config.get("hidden_dim", self.lstm_params.get("hidden_dim", 128)),
+                    "num_layers": lstm_config.get("num_layers", self.lstm_params.get("num_layers", 2)),
+                    "dropout": lstm_config.get("dropout", self.lstm_params.get("dropout", 0.3)),
+                    "bidirectional": lstm_config.get("bidirectional", self.lstm_params.get("bidirectional", True)),
+                    "batch_size": lstm_config.get("batch_size", self.lstm_params.get("batch_size", 32)),
+                    "epochs": lstm_config.get("epochs", self.lstm_params.get("epochs", 10)),
+                    "learning_rate": lstm_config.get("learning_rate", self.lstm_params.get("learning_rate", 0.001)),
+                    "embedding_path": lstm_config.get("embedding_path", self.lstm_params.get("embedding_path")),
+                    "freeze_embeddings": lstm_config.get("freeze_embeddings", self.lstm_params.get("freeze_embeddings", False)),
+                    "resume_from": lstm_config.get("resume_from", self.lstm_params.get("resume_from")),
+                    "checkpoint_interval": lstm_config.get("checkpoint_interval", self.lstm_params.get("checkpoint_interval", 1)),
+                })
 
     def resolve_label_cols(self, df: pd.DataFrame) -> List[str]:
         if self.label_cols:
@@ -222,7 +285,140 @@ def _train_single_deep_fold(
         tokenizer.save_pretrained(str(fold_dir / "final_model"))
 
     elif config.model_type == "lstm":
-        raise NotImplementedError("LSTM training not yet implemented.")
+        # Preprocess texts for LSTM (tokenize and pad)
+        preprocessor = LSTMPreprocessor(
+            vocab_size=config.lstm_params.get("vocab_size", 10000),
+            max_length=config.lstm_params.get("max_length", 200),
+            oov_token="<OOV>",
+            padding="post",
+            truncating="post",
+        )
+        
+        # Fit preprocessor on training data
+        X_train_seq = preprocessor.fit_transform(X_train)
+        X_dev_seq = preprocessor.transform(X_dev)
+        X_test_seq = preprocessor.transform(X_test)
+        
+        # Load pre-trained embeddings if provided
+        embedding_matrix = None
+        embedding_path = config.lstm_params.get("embedding_path")
+        if embedding_path and Path(embedding_path).exists():
+            embedding_path = Path(embedding_path)
+            word_index = preprocessor.get_word_index()
+            
+            # Try to detect embedding type from file extension or content
+            if embedding_path.suffix == ".txt" or "glove" in embedding_path.name.lower():
+                # Assume GloVe format
+                embedding_dim = config.lstm_params.get("embedding_dim", 128)
+                embedding_matrix = load_glove_embeddings(
+                    embedding_path, word_index, embedding_dim=embedding_dim
+                )
+            elif "word2vec" in embedding_path.name.lower() or embedding_path.suffix in [".bin", ".model"]:
+                # Assume Word2Vec format
+                embedding_matrix, embedding_dim = load_word2vec_embeddings(
+                    embedding_path, word_index, binary=True
+                )
+                # Update embedding_dim in config if it was auto-detected
+                config.lstm_params["embedding_dim"] = embedding_dim
+        
+        # Train LSTM model
+        resume_from = config.lstm_params.get("resume_from")
+        if resume_from:
+            resume_from = str(Path(resume_from))  # Convert to string path
+        
+        model, preprocessor = train_lstm_model(
+            X_train_text=X_train,  # Already normalized
+            y_train=y_train,
+            X_val_text=X_dev,  # Already normalized
+            y_val=y_dev,
+            preprocessor=preprocessor,
+            output_dir=str(fold_dir / "checkpoints"),
+            num_labels=len(label_cols),
+            embedding_dim=config.lstm_params.get("embedding_dim", 128),
+            hidden_dim=config.lstm_params.get("hidden_dim", 128),
+            num_layers=config.lstm_params.get("num_layers", 2),
+            dropout=config.lstm_params.get("dropout", 0.3),
+            bidirectional=config.lstm_params.get("bidirectional", True),
+            batch_size=config.lstm_params.get("batch_size", 32),
+            epochs=config.lstm_params.get("epochs", 10),
+            learning_rate=config.lstm_params.get("learning_rate", 0.001),
+            embedding_matrix=embedding_matrix,
+            freeze_embeddings=config.lstm_params.get("freeze_embeddings", False),
+            seed=config.seed,
+            resume_from=resume_from,
+            checkpoint_interval=config.lstm_params.get("checkpoint_interval", 1),
+        )
+        
+        # Save preprocessor (tokenizer) and model
+        model_dir = fold_dir / "models"
+        model_dir.mkdir(exist_ok=True)
+        preprocessor.save(model_dir / "lstm_preprocessor.pkl")
+        
+        # Save full model (not just state dict) for easier loading
+        torch.save(model, model_dir / "lstm_model_full.pt")
+        
+        # Save LSTM-specific config JSON with all hyperparameters
+        lstm_config_path = model_dir / "lstm_config.json"
+        lstm_config = {
+            "model_type": "lstm",
+            "fold": fold_name,
+            "preprocessing": {
+                "vocab_size": config.lstm_params.get("vocab_size", 10000),
+                "max_length": config.lstm_params.get("max_length", 200),
+            },
+            "model_architecture": {
+                "embedding_dim": config.lstm_params.get("embedding_dim", 128),
+                "hidden_dim": config.lstm_params.get("hidden_dim", 128),
+                "num_layers": config.lstm_params.get("num_layers", 2),
+                "dropout": config.lstm_params.get("dropout", 0.3),
+                "bidirectional": config.lstm_params.get("bidirectional", True),
+                "num_labels": len(label_cols),
+            },
+            "training": {
+                "batch_size": config.lstm_params.get("batch_size", 32),
+                "epochs": config.lstm_params.get("epochs", 10),
+                "learning_rate": config.lstm_params.get("learning_rate", 0.001),
+            },
+            "embeddings": {
+                "embedding_path": config.lstm_params.get("embedding_path"),
+                "freeze_embeddings": config.lstm_params.get("freeze_embeddings", False),
+            },
+            "label_cols": label_cols,
+            "seed": config.seed,
+        }
+        with open(lstm_config_path, "w", encoding="utf-8") as f:
+            json.dump(lstm_config, f, indent=2)
+        
+        # Predict on Dev to set thresholds
+        dev_probs_arr, _ = predict_lstm(model, preprocessor, X_dev)
+        dev_probs = {label: dev_probs_arr[:, i] for i, label in enumerate(label_cols)}
+        
+        # Determine thresholds
+        if config.target_precision:
+            thresholds = find_precision_thresholds(
+                y_dev, dev_probs, label_cols, target_precision=config.target_precision
+            )
+        else:
+            thresholds = 0.5
+        
+        # Predict on Test
+        test_probs_arr, _ = predict_lstm(model, preprocessor, X_test)
+        test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
+        
+        # Save model state dict (for compatibility)
+        torch.save(model.state_dict(), model_dir / "lstm_model.pt")
+        
+        # Also save model architecture info for reconstruction
+        model_info = {
+            "vocab_size": preprocessor.get_vocab_size(),
+            "embedding_dim": config.lstm_params.get("embedding_dim", 128),
+            "hidden_dim": config.lstm_params.get("hidden_dim", 128),
+            "num_layers": config.lstm_params.get("num_layers", 2),
+            "num_labels": len(label_cols),
+            "dropout": config.lstm_params.get("dropout", 0.3),
+            "bidirectional": config.lstm_params.get("bidirectional", True),
+        }
+        torch.save(model_info, model_dir / "lstm_model_info.pt")
     else:
         raise ValueError(f"Unknown deep model type: {config.model_type}")
 
@@ -302,11 +498,24 @@ def _persist_deep_artifacts(
         # Ground truth is already in test_df copy, so no extra work needed
     preds_df.to_csv(preds_path, index=False)
     
-    # Save Config
+    # Save Config (includes all config including lstm_params)
     payload = asdict(config)
     payload["data_path"] = str(config.data_path)
     payload["splits_dir"] = str(config.splits_dir)
     payload["output_dir"] = str(config.output_dir)
-    with open(config_path, "w") as f:
+    payload["fold_name"] = fold_name
+    payload["label_cols"] = label_cols
+    
+    # Ensure lstm_params are properly serialized
+    if config.model_type == "lstm" and "lstm_params" in payload:
+        # Convert any Path objects to strings
+        lstm_params = payload["lstm_params"].copy()
+        if "embedding_path" in lstm_params and lstm_params["embedding_path"]:
+            lstm_params["embedding_path"] = str(lstm_params["embedding_path"])
+        if "resume_from" in lstm_params and lstm_params["resume_from"]:
+            lstm_params["resume_from"] = str(lstm_params["resume_from"])
+        payload["lstm_params"] = lstm_params
+    
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
