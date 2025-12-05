@@ -11,8 +11,10 @@ import yaml
 from src.data.buckets import DEFAULT_BUCKET_CONFIG_PATH
 from src.data.normalization import DEFAULT_NORMALIZATION_CONFIG_PATH
 from src.pipeline.train import TrainConfig, run_training_pipeline
+from src.pipeline.train_deep import DeepTrainConfig, run_deep_training_pipeline
 
 DEFAULT_NAIVE_BAYES_CONFIG_PATH = Path("configs/naive_bayes.yaml")
+DEFAULT_LSTM_CONFIG_PATH = Path("configs/lstm.yaml")
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,7 +71,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         type=str,
         default="logistic",
-        choices=["logistic", "svm", "random_forest", "naive_bayes", "xgboost", "bert"],
+        choices=["logistic", "svm", "random_forest", "naive_bayes", "xgboost", "bert", "lstm"],
         help="Model type to train (TF-IDF variants or transformer).",
     )
     parser.add_argument(
@@ -242,6 +244,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         choices=["true", "false"],
         help="Whether to learn class prior probabilities for Naive Bayes (true/false).",
+    )
+    parser.add_argument(
+        "--lstm-config",
+        type=Path,
+        default=DEFAULT_LSTM_CONFIG_PATH,
+        help="Path to LSTM config YAML file (when --model lstm).",
     )
     parser.add_argument(
         "--bert-model-name",
@@ -440,7 +448,29 @@ def main() -> None:
     if args.bert_save_total_limit is not None:
         config.bert_params["save_total_limit"] = args.bert_save_total_limit
 
-    results = run_training_pipeline(config)
+    # Route to deep training pipeline for LSTM and BERT
+    if config.model_type in ["lstm", "bert"]:
+        deep_config = DeepTrainConfig(
+            model_type=config.model_type,
+            fold=config.fold,
+            output_dir=config.output_dir,
+            data_path=config.data_path,
+            splits_dir=config.splits_dir,
+            label_cols=config.label_cols,
+            text_col=config.text_col,
+            normalization=config.normalization,
+            normalization_config=config.normalization_config,
+            lstm_config_path=args.lstm_config if config.model_type == "lstm" else None,
+            bert_params=config.bert_params if config.model_type == "bert" else None,
+            target_precision=config.target_precision,
+            top_k=config.top_k,
+            fairness_min_support=config.fairness_min_support,
+            seed=config.seed,
+        )
+        results = run_deep_training_pipeline(deep_config)
+    else:
+        results = run_training_pipeline(config)
+    
     for fold_name, payload in results.items():
         metrics = payload["overall_metrics"]
         print(

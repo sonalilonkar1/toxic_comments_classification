@@ -13,4 +13,8 @@ transformers
 accelerate
 pyyaml
 kaggle
+tf-keras
 # NOTE: install PyTorch separately (see scripts/02_install_torch_macos.sh)
+# NOTE: tf-keras is required for:
+#   - LSTM preprocessing (Tokenizer, pad_sequences)
+#   - Transformers library compatibility (requires tf-keras, not Keras 3)
