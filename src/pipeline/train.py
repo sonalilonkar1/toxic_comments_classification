@@ -63,7 +63,7 @@ DEFAULT_VECTORIZER: Dict[str, object] = {
 }
 
 DEFAULT_BERT: Dict[str, object] = {
-    "model_name": "bert-base-uncased",
+    "model_name": "distilbert-base-uncased",
     "max_length": 256,
     "train_batch_size": 8,
     "eval_batch_size": 8,
