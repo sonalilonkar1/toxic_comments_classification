@@ -6,15 +6,100 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     hamming_loss,
+    precision_recall_curve,
     precision_recall_fscore_support,
     precision_score,
     recall_score,
 )
 
 
-def probs_to_preds(prob_dict: dict[str, np.ndarray], threshold: float = 0.5) -> np.ndarray:
-    """Convert per-label probabilities to binary predictions using threshold."""
-    return np.column_stack([(prob_dict[label] >= threshold).astype(int) for label in prob_dict.keys()])
+def probs_to_preds(
+    prob_dict: dict[str, np.ndarray],
+    threshold: float | dict[str, float] = 0.5
+) -> np.ndarray:
+    """Convert per-label probabilities to binary predictions using threshold(s)."""
+    preds = []
+    for label in prob_dict.keys():
+        probs = prob_dict[label]
+        thresh = threshold.get(label, 0.5) if isinstance(threshold, dict) else threshold
+        preds.append((probs >= thresh).astype(int))
+    return np.column_stack(preds)
+
+
+def find_precision_thresholds(
+    y_true: np.ndarray,
+    prob_dict: dict[str, np.ndarray],
+    label_cols: list[str],
+    target_precision: float = 0.90,
+) -> dict[str, float]:
+    """Find threshold for each label that achieves at least target_precision."""
+    thresholds = {}
+    for idx, label in enumerate(label_cols):
+        y_label = y_true[:, idx]
+        probs = prob_dict[label]
+        
+        precisions, recalls, thresh_values = precision_recall_curve(y_label, probs)
+        
+        # Filter for precisions >= target
+        # precision_recall_curve returns precisions length = thresh + 1 (last is 1.0)
+        # We want the smallest threshold that gives us >= target_precision
+        valid_indices = np.where(precisions[:-1] >= target_precision)[0]
+        
+        if len(valid_indices) > 0:
+            # Pick the one that yields highest recall (lowest valid threshold)
+            # Since thresholds are increasing, and typically precision increases with threshold,
+            # we want the first index where precision is high enough.
+            # However, precision is not strictly monotonic.
+            # Let's pick the threshold that gives max recall among those with sufficient precision.
+            best_idx = valid_indices[np.argmax(recalls[valid_indices])]
+            thresholds[label] = float(thresh_values[best_idx])
+        else:
+            # Fallback if target not reachable: max precision threshold or 0.95
+            thresholds[label] = 0.5
+            
+    return thresholds
+
+
+def compute_top_k_metrics(
+    y_true: np.ndarray,
+    prob_dict: dict[str, np.ndarray],
+    label_cols: list[str],
+    k: int,
+) -> dict[str, float]:
+    """Simulate a review queue of capacity K.
+    
+    Ranks all (comment, label) pairs by probability and picks top K.
+    Returns precision/recall at this cut-off.
+    """
+    # Flatten everything to find top K predictions across all labels
+    all_probs = []
+    all_true = []
+    
+    for idx, label in enumerate(label_cols):
+        probs = prob_dict[label]
+        true_vals = y_true[:, idx]
+        all_probs.extend(probs)
+        all_true.extend(true_vals)
+        
+    all_probs = np.array(all_probs)
+    all_true = np.array(all_true)
+    
+    # Sort indices by probability descending
+    sorted_indices = np.argsort(-all_probs)
+    top_k_indices = sorted_indices[:k]
+    
+    # Calculate metrics
+    top_k_true = all_true[top_k_indices]
+    
+    precision_at_k = np.mean(top_k_true)
+    total_positives = np.sum(all_true)
+    recall_at_k = np.sum(top_k_true) / total_positives if total_positives > 0 else 0.0
+    
+    return {
+        f"precision_at_{k}": float(precision_at_k),
+        f"recall_at_{k}": float(recall_at_k),
+        f"hits_at_{k}": int(np.sum(top_k_true)),
+    }
 
 
 def compute_multilabel_metrics(
