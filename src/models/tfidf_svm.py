@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import FeatureUnion
 from sklearn.svm import LinearSVC
 
 from src.features.tfidf import create_tfidf_vectorizer
@@ -19,7 +20,7 @@ def train_multilabel_tfidf_linear_svm(
     vectorizer_params: Optional[Dict] = None,
     svm_params: Optional[Dict] = None,
     calibration_params: Optional[Dict] = None,
-) -> Tuple[TfidfVectorizer, Dict[str, CalibratedClassifierCV]]:
+) -> Tuple[Union[TfidfVectorizer, FeatureUnion], Dict[str, CalibratedClassifierCV]]:
     """Train TF-IDF + LinearSVC models per label with probability calibration."""
 
     if vectorizer_params is None:

@@ -1,8 +1,6 @@
 .venv/
 __pycache__/
 *.pyc
-data/splits/
-data/raw/*.zip
 experiments/
 artifacts/
 reports/figures/*.png

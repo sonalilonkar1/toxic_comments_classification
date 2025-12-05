@@ -52,6 +52,7 @@ src/
 │   ├── tfidf_logistic.py       # Multi-label TF-IDF + LogisticRegression trainer
 │   ├── tfidf_svm.py            # Calibrated TF-IDF + LinearSVC trainer
 │   ├── tfidf_random_forest.py  # TF-IDF + RandomForestClassifier trainer
+│   ├── bert_transformer.py     # HuggingFace Trainer harness for transformer fine-tuning
 │   ├── bert_model.py           # Placeholder for transformer models
 │   └── traditional.py          # Placeholder for NB/LR/SVM/RF/XGB implementations
 ├── pipeline/
@@ -70,6 +71,7 @@ src/
 - **`src/models/tfidf_logistic.py`**: Implements the multi-label TF-IDF + logistic trainer used across notebooks and the pipeline.
 - **`src/models/tfidf_svm.py`**: Provides the calibrated TF-IDF + LinearSVC trainer (probability estimates for downstream metrics).
 - **`src/models/tfidf_random_forest.py`**: Offers a TF-IDF + RandomForest baseline compatible with the same interfaces.
+- **`src/models/bert_transformer.py`**: Wraps HuggingFace Trainer for multi-label transformer fine-tuning (`--model bert`), handling tokenization, training arguments, and probability outputs for the pipeline.
 - **`src/utils/metrics.py`**: Provides `compute_multilabel_metrics`, `compute_fairness_slices`, and `probs_to_preds`. Enables consistent evaluation across notebooks, pipeline runs, and future models.
 - **`src/data/preprocess.py`**: Contains normalization routines referenced by notebooks and future data loaders. Tests in `tests/test_preprocess.py` ensure deterministic behavior.
 - **`src/data/dataset.py`**: Handles reading `train.csv`, injecting mock timestamps, and hydrating fold splits from JSON index files. It returns combined data structures (base dataframe, fold map, identity column list, fold size table).
