@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from typing import Union, Optional, List, Dict, Tuple
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -10,12 +11,15 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     precision_score,
     recall_score,
+    brier_score_loss,
+    roc_auc_score,
+    average_precision_score,
 )
 
 
 def probs_to_preds(
-    prob_dict: dict[str, np.ndarray],
-    threshold: float | dict[str, float] = 0.5
+    prob_dict: Dict[str, np.ndarray],
+    threshold: Union[float, Dict[str, float]] = 0.5
 ) -> np.ndarray:
     """Convert per-label probabilities to binary predictions using threshold(s)."""
     preds = []
@@ -28,10 +32,10 @@ def probs_to_preds(
 
 def find_precision_thresholds(
     y_true: np.ndarray,
-    prob_dict: dict[str, np.ndarray],
-    label_cols: list[str],
+    prob_dict: Dict[str, np.ndarray],
+    label_cols: List[str],
     target_precision: float = 0.90,
-) -> dict[str, float]:
+) -> Dict[str, float]:
     """Find threshold for each label that achieves at least target_precision."""
     thresholds = {}
     for idx, label in enumerate(label_cols):
@@ -41,37 +45,43 @@ def find_precision_thresholds(
         precisions, recalls, thresh_values = precision_recall_curve(y_label, probs)
         
         # Filter for precisions >= target
-        # precision_recall_curve returns precisions length = thresh + 1 (last is 1.0)
-        # We want the smallest threshold that gives us >= target_precision
         valid_indices = np.where(precisions[:-1] >= target_precision)[0]
         
         if len(valid_indices) > 0:
-            # Pick the one that yields highest recall (lowest valid threshold)
-            # Since thresholds are increasing, and typically precision increases with threshold,
-            # we want the first index where precision is high enough.
-            # However, precision is not strictly monotonic.
-            # Let's pick the threshold that gives max recall among those with sufficient precision.
             best_idx = valid_indices[np.argmax(recalls[valid_indices])]
             thresholds[label] = float(thresh_values[best_idx])
         else:
-            # Fallback if target not reachable: max precision threshold or 0.95
             thresholds[label] = 0.5
             
     return thresholds
 
 
+def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
+    """Compute Expected Calibration Error (ECE)."""
+    bin_boundaries = np.linspace(0, 1, n_bins + 1)
+    bin_lowers = bin_boundaries[:-1]
+    bin_uppers = bin_boundaries[1:]
+    
+    ece = 0.0
+    for bin_lower, bin_upper in zip(bin_lowers, bin_uppers):
+        in_bin = (y_prob > bin_lower) & (y_prob <= bin_upper)
+        prop_in_bin = in_bin.mean()
+        
+        if prop_in_bin > 0:
+            accuracy_in_bin = y_true[in_bin].mean()
+            avg_confidence_in_bin = y_prob[in_bin].mean()
+            ece += np.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
+            
+    return ece
+
+
 def compute_top_k_metrics(
     y_true: np.ndarray,
-    prob_dict: dict[str, np.ndarray],
-    label_cols: list[str],
+    prob_dict: Dict[str, np.ndarray],
+    label_cols: List[str],
     k: int,
-) -> dict[str, float]:
-    """Simulate a review queue of capacity K.
-    
-    Ranks all (comment, label) pairs by probability and picks top K.
-    Returns precision/recall at this cut-off.
-    """
-    # Flatten everything to find top K predictions across all labels
+) -> Dict[str, float]:
+    """Simulate a review queue of capacity K."""
     all_probs = []
     all_true = []
     
@@ -84,11 +94,9 @@ def compute_top_k_metrics(
     all_probs = np.array(all_probs)
     all_true = np.array(all_true)
     
-    # Sort indices by probability descending
     sorted_indices = np.argsort(-all_probs)
     top_k_indices = sorted_indices[:k]
     
-    # Calculate metrics
     top_k_true = all_true[top_k_indices]
     
     precision_at_k = np.mean(top_k_true)
@@ -105,8 +113,9 @@ def compute_top_k_metrics(
 def compute_multilabel_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    label_cols: list[str],
-) -> tuple[dict, pd.DataFrame]:
+    label_cols: List[str],
+    prob_dict: Optional[Dict[str, np.ndarray]] = None,
+) -> Tuple[Dict, pd.DataFrame]:
     """Compute overall and per-label metrics for multi-label classification.
 
     Returns:
@@ -126,19 +135,61 @@ def compute_multilabel_metrics(
 
     # Per-label metrics
     per_label_rows = []
+    brier_scores = []
+    ece_scores = []
+    
+    # Calculate global AUCs if probabilities available
+    if prob_dict is not None:
+        y_probs_arr = np.column_stack([prob_dict[label] for label in label_cols])
+        try:
+            overall_metrics["macro_roc_auc"] = roc_auc_score(y_true, y_probs_arr, average="macro")
+            overall_metrics["micro_roc_auc"] = roc_auc_score(y_true, y_probs_arr, average="micro")
+            overall_metrics["macro_pr_auc"] = average_precision_score(y_true, y_probs_arr, average="macro")
+            overall_metrics["micro_pr_auc"] = average_precision_score(y_true, y_probs_arr, average="micro")
+        except ValueError:
+            overall_metrics["macro_roc_auc"] = 0.0
+            overall_metrics["micro_roc_auc"] = 0.0
+            overall_metrics["macro_pr_auc"] = 0.0
+            overall_metrics["micro_pr_auc"] = 0.0
+
     for idx, label in enumerate(label_cols):
         prec, rec, f1, support = precision_recall_fscore_support(
             y_true[:, idx], y_pred[:, idx], average="binary", zero_division=0
         )
-        per_label_rows.append({
+        
+        row = {
             "label": label,
             "precision": prec,
             "recall": rec,
             "f1": f1,
             "support": int(y_true[:, idx].sum()),
-        })
+            "alert_volume": int(y_pred[:, idx].sum()),
+        }
 
-    import pandas as pd
+        # Calibration & AUC metrics
+        if prob_dict is not None and label in prob_dict:
+            probs = prob_dict[label]
+            bs = brier_score_loss(y_true[:, idx], probs)
+            ece = expected_calibration_error(y_true[:, idx], probs)
+            
+            row["brier_score"] = bs
+            row["ece"] = ece
+            brier_scores.append(bs)
+            ece_scores.append(ece)
+            
+            try:
+                row["roc_auc"] = roc_auc_score(y_true[:, idx], probs)
+                row["pr_auc"] = average_precision_score(y_true[:, idx], probs)
+            except ValueError:
+                row["roc_auc"] = 0.0
+                row["pr_auc"] = 0.0
+        
+        per_label_rows.append(row)
+
+    if brier_scores:
+        overall_metrics["macro_brier"] = np.mean(brier_scores)
+        overall_metrics["macro_ece"] = np.mean(ece_scores)
+
     per_label_df = pd.DataFrame(per_label_rows).sort_values("f1", ascending=False)
 
     return overall_metrics, per_label_df
@@ -148,15 +199,11 @@ def compute_fairness_slices(
     test_df: pd.DataFrame,
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    label_cols: list[str],
-    identity_cols: list[str],
+    label_cols: List[str],
+    identity_cols: List[str],
     min_support: int = 50,
 ) -> pd.DataFrame:
-    """Compute fairness metrics by identity subgroups.
-
-    Returns:
-        DataFrame with fairness gaps per identity/label
-    """
+    """Compute fairness metrics by identity subgroups."""
     if not identity_cols:
         return pd.DataFrame()
 

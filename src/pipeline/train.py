@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from functools import lru_cache
@@ -348,7 +349,7 @@ def _train_single_fold(
             label: model.predict_proba(X_test_vec)[:, 1]
             for label, model in label_models.items()
         }
-    y_test_pred = probs_to_preds(test_probs, threshold=config.threshold)
+    
     # Validate on Dev to find thresholds
     X_dev_vec = tfidf.transform(X_dev.tolist())
     dev_probs = {
@@ -362,20 +363,29 @@ def _train_single_fold(
         thresholds = find_precision_thresholds(
             y_dev, dev_probs, label_cols, target_precision=config.target_precision
         )
-        # Store thresholds in metrics for reference
-        # We'll save them in a separate artifact or just log them
-        # (logging omitted for brevity, but they are used for prediction)
     else:
         thresholds = config.threshold
 
+    # Measure inference latency on test set
+    t0 = time.time()
     X_test_vec = tfidf.transform(X_test.tolist())
     test_probs = {
         label: model.predict_proba(X_test_vec)[:, 1]
         for label, model in label_models.items()
     }
     y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
+    latency_sec = time.time() - t0
+    
+    # Calculate latency metric
+    n_samples = len(y_test)
+    latency_per_1k = (latency_sec / n_samples) * 1000 if n_samples > 0 else 0.0
 
-    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols)
+    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols, prob_dict=test_probs)
+    
+    # Add operational metrics
+    overall_metrics["latency_seconds_per_1k"] = latency_per_1k
+    overall_metrics["inference_samples"] = n_samples
+    overall_metrics["inference_time_total"] = latency_sec
     
     # Compute Top-K metrics
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)

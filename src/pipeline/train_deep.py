@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -93,6 +94,8 @@ class DeepTrainConfig:
     bert_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_BERT_PARAMS.copy())
     lstm_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_LSTM_PARAMS.copy())
     lstm_config_path: Optional[Path] = DEFAULT_LSTM_CONFIG_PATH  # Path to LSTM YAML config
+    loss_type: str = "bce"
+    loss_params: Dict[str, float] = field(default_factory=dict)
     
     # Evaluation
     target_precision: Optional[float] = 0.90
@@ -231,6 +234,8 @@ def _train_single_deep_fold(
     y_dev = dev_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
     
+    latency_sec = 0.0
+    
     # Train Model
     if config.model_type == "bert":
         trainer, tokenizer = train_bert_model(
@@ -246,7 +251,9 @@ def _train_single_deep_fold(
             epochs=config.bert_params.get("epochs", 3),
             learning_rate=config.bert_params.get("learning_rate", 2e-5),
             fp16=config.bert_params.get("fp16", False),
-            seed=config.seed
+            seed=config.seed,
+            loss_type=config.loss_type,
+            loss_params=config.loss_params,
         )
         
         # Predict on Dev to set thresholds
@@ -275,7 +282,10 @@ def _train_single_deep_fold(
         from src.models.deep.bert import ToxicDataset
         test_dataset = ToxicDataset(test_encodings) # No labels needed for prediction, but nice to have
         
+        t0 = time.time()
         test_out = trainer.predict(test_dataset)
+        latency_sec = time.time() - t0
+        
         test_logits = test_out.predictions
         test_probs_arr = 1.0 / (1.0 + np.exp(-test_logits))
         test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
@@ -347,6 +357,8 @@ def _train_single_deep_fold(
             seed=config.seed,
             resume_from=resume_from,
             checkpoint_interval=config.lstm_params.get("checkpoint_interval", 1),
+            loss_type=config.loss_type,
+            loss_params=config.loss_params,
         )
         
         # Save preprocessor (tokenizer) and model
@@ -378,9 +390,11 @@ def _train_single_deep_fold(
                 "batch_size": config.lstm_params.get("batch_size", 32),
                 "epochs": config.lstm_params.get("epochs", 10),
                 "learning_rate": config.lstm_params.get("learning_rate", 0.001),
+                "loss_type": config.loss_type,
+                "loss_params": config.loss_params,
             },
             "embeddings": {
-                "embedding_path": config.lstm_params.get("embedding_path"),
+                "embedding_path": str(config.lstm_params.get("embedding_path")) if config.lstm_params.get("embedding_path") else None,
                 "freeze_embeddings": config.lstm_params.get("freeze_embeddings", False),
             },
             "label_cols": label_cols,
@@ -402,7 +416,10 @@ def _train_single_deep_fold(
             thresholds = 0.5
         
         # Predict on Test
+        t0 = time.time()
         test_probs_arr, _ = predict_lstm(model, preprocessor, X_test)
+        latency_sec = time.time() - t0
+        
         test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
         
         # Save model state dict (for compatibility)
@@ -425,7 +442,13 @@ def _train_single_deep_fold(
     # Calculate Metrics
     y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
     
-    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols)
+    overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols, prob_dict=test_probs)
+    
+    n_samples = len(y_test)
+    latency_per_1k = (latency_sec / n_samples) * 1000 if n_samples > 0 else 0.0
+    overall_metrics["latency_seconds_per_1k"] = latency_per_1k
+    overall_metrics["inference_time_total"] = latency_sec
+    
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
     overall_metrics.update(top_k_metrics)
     
@@ -464,6 +487,20 @@ def _prepare_fold_dir(base_dir: Path, fold_name: str, config: DeepTrainConfig) -
     return fold_dir
 
 
+def _convert_paths_to_strings(obj):
+    """Recursively convert Path objects to strings in a dictionary or list."""
+    if isinstance(obj, Path):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: _convert_paths_to_strings(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_paths_to_strings(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(_convert_paths_to_strings(item) for item in obj)
+    else:
+        return obj
+
+
 def _persist_deep_artifacts(
     fold_dir: Path,
     fold_name: str,
@@ -500,22 +537,31 @@ def _persist_deep_artifacts(
     
     # Save Config (includes all config including lstm_params)
     payload = asdict(config)
+    # Convert all Path objects to strings recursively
+    payload = _convert_paths_to_strings(payload)
+    # Explicitly convert Path fields (in case they weren't caught)
     payload["data_path"] = str(config.data_path)
     payload["splits_dir"] = str(config.splits_dir)
     payload["output_dir"] = str(config.output_dir)
+    if payload.get("normalization_config"):
+        payload["normalization_config"] = str(payload["normalization_config"])
+    if payload.get("lstm_config_path"):
+        payload["lstm_config_path"] = str(payload["lstm_config_path"])
     payload["fold_name"] = fold_name
     payload["label_cols"] = label_cols
     
-    # Ensure lstm_params are properly serialized
+    # Ensure lstm_params are properly serialized (already converted by _convert_paths_to_strings)
     if config.model_type == "lstm" and "lstm_params" in payload:
-        # Convert any Path objects to strings
-        lstm_params = payload["lstm_params"].copy()
+        lstm_params = payload["lstm_params"]
+        # Double-check Path objects are strings
         if "embedding_path" in lstm_params and lstm_params["embedding_path"]:
             lstm_params["embedding_path"] = str(lstm_params["embedding_path"])
         if "resume_from" in lstm_params and lstm_params["resume_from"]:
             lstm_params["resume_from"] = str(lstm_params["resume_from"])
         payload["lstm_params"] = lstm_params
     
+    if config.normalization_config:
+        payload["normalization_config"] = str(config.normalization_config)
+        
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
-

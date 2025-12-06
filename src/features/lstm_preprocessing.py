@@ -14,13 +14,19 @@ try:
     TF_AVAILABLE = True
 except ImportError:
     try:
-        from keras.preprocessing.text import Tokenizer
-        from keras.preprocessing.sequence import pad_sequences
+        # Try tf_keras (for compatibility with transformers)
+        from tf_keras.preprocessing.text import Tokenizer
+        from tf_keras.preprocessing.sequence import pad_sequences
         TF_AVAILABLE = True
     except ImportError:
-        TF_AVAILABLE = False
-        Tokenizer = None
-        pad_sequences = None
+        try:
+            from keras.preprocessing.text import Tokenizer
+            from keras.preprocessing.sequence import pad_sequences
+            TF_AVAILABLE = True
+        except ImportError:
+            TF_AVAILABLE = False
+            Tokenizer = None
+            pad_sequences = None
 
 
 class LSTMPreprocessor:
