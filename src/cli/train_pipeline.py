@@ -379,7 +379,6 @@ def main() -> None:
                     bucket_cache_column=args.bucket_cache_column,
                 )
 
-<<<<<<< HEAD
                 # Apply overrides
                 if args.max_features is not None:
                     config.vectorizer_params["max_features"] = args.max_features
@@ -483,32 +482,6 @@ def main() -> None:
             json.dump(summary_payload, handle, indent=2)
     
     for fold_name, payload in all_results.items():
-=======
-    # Route to deep training pipeline for LSTM and BERT
-    if config.model_type in ["lstm", "bert"]:
-        deep_config = DeepTrainConfig(
-            model_type=config.model_type,
-            fold=config.fold,
-            output_dir=config.output_dir,
-            data_path=config.data_path,
-            splits_dir=config.splits_dir,
-            label_cols=config.label_cols,
-            text_col=config.text_col,
-            normalization=config.normalization,
-            normalization_config=config.normalization_config,
-            lstm_config_path=args.lstm_config if config.model_type == "lstm" else None,
-            bert_params=config.bert_params if config.model_type == "bert" else None,
-            target_precision=config.target_precision,
-            top_k=config.top_k,
-            fairness_min_support=config.fairness_min_support,
-            seed=config.seed,
-        )
-        results = run_deep_training_pipeline(deep_config)
-    else:
-        results = run_training_pipeline(config)
-    
-    for fold_name, payload in results.items():
->>>>>>> 42ffc492145607437e6c1c574601a83a1bfc1bc2
         metrics = payload["overall_metrics"]
         print(
             f"Fold {fold_name}: micro F1={metrics['micro_f1']:.4f}, "
