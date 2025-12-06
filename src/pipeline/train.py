@@ -10,8 +10,12 @@ from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional
 
 import joblib
+import logging
 import numpy as np
 import pandas as pd
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 from src.data.buckets import (
     DEFAULT_BUCKET_CONFIG_PATH,
@@ -77,16 +81,16 @@ DEFAULT_BERT: Dict[str, object] = {
     "save_total_limit": 1,
 }
 DEFAULT_MODEL: Dict[str, object] = {
-    "max_iter": 400,
+    "max_iter": 200,  # Tuned from 400
     "class_weight": "balanced",
     "solver": "liblinear",
-    "C": 1.0,
+    "C": 10.0,  # Tuned from 1.0
 }
 
 DEFAULT_SVM: Dict[str, object] = {
-    "C": 1.0,
+    "C": 1.0,  # Tuned (varies, but 1.0 for most)
     "class_weight": "balanced",
-    "max_iter": 2000,
+    "max_iter": 1000,  # Tuned from 2000
 }
 
 DEFAULT_SVM_CALIBRATION: Dict[str, object] = {
@@ -95,8 +99,8 @@ DEFAULT_SVM_CALIBRATION: Dict[str, object] = {
 }
 
 DEFAULT_RF: Dict[str, object] = {
-    "n_estimators": 400,
-    "max_depth": None,
+    "n_estimators": 200,  # Tuned from 400
+    "max_depth": None,  # Tuned
     "max_features": "sqrt",
     "min_samples_split": 2,
     "min_samples_leaf": 1,
@@ -191,7 +195,8 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
 
     Returns a dictionary keyed by fold containing artifact locations and metrics.
     """
-
+    logging.info(f"Starting training pipeline for model: {config.model_type}, fold: {config.fold or 'all'}, seed: {config.seed}")
+    
     base_df, fold_frames, identity_cols, _ = load_fold_frames(
         seed=config.seed,
         data_path=config.data_path,
@@ -217,6 +222,7 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
     bucket_hash = _prepare_bucket_hash(config)
     results: Dict[str, Dict[str, object]] = {}
     for fold_name in target_folds:
+        logging.info(f"Training fold: {fold_name}")
         fold_dir = _prepare_fold_dir(config.output_dir, fold_name, config)
         fold_metrics = _train_single_fold(
             fold_name=fold_name,
@@ -230,15 +236,9 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
             bucket_hash=bucket_hash,
         )
         results[fold_name] = fold_metrics
+        logging.info(f"Completed training for fold: {fold_name}")
 
-    summary_path = config.output_dir / "summary_metrics.json"
-    summary_payload = {
-        fold: metrics["overall_metrics"] for fold, metrics in results.items()
-    }
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(summary_path, "w", encoding="utf-8") as handle:
-        json.dump(summary_payload, handle, indent=2)
-
+    logging.info("Training pipeline completed.")
     return results
 
 
@@ -254,6 +254,7 @@ def _train_single_fold(
     bucket_hash: Optional[str],
 ) -> Dict[str, object]:
     """Train/evaluate a single fold and persist artifacts."""
+    logging.info(f"Preparing data for fold: {fold_name}")
 
     text_col = config.text_col
 
@@ -273,6 +274,8 @@ def _train_single_fold(
     tfidf = None
     label_models: Optional[Dict[str, object]] = None
     extra_metadata: Optional[Dict[str, object]] = None
+
+    logging.info(f"Training model: {config.model_type} for fold: {fold_name}")
 
     if config.model_type == "bert":
         from src.models.bert_transformer import train_multilabel_bert
@@ -409,6 +412,7 @@ def _train_single_fold(
         extra_metadata=extra_metadata,
     )
 
+    logging.info(f"Completed evaluation and saved artifacts for fold: {fold_name}")
     return {
         "overall_metrics": overall_metrics,
         "per_label_path": fold_dir / "per_label_metrics.csv",
