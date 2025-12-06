@@ -215,22 +215,24 @@ if __name__ == "__main__":
     }
 
     seeds = [42, 43, 44]  # Tune across all available seeds
-    for seed in seeds:
-        logging.info(f"Starting hyperparameter tuning for seed: {seed}")
-        config = TrainConfig(
-            fold=f"fold3_seed{seed}",  # Tune only fold 3 for this seed
-            model_type="logistic",  # Will be overridden per model
-            seed=seed,
-            output_dir=Path(f"experiments/hyperparameter_tuning_fold3_seed{seed}"),
-        )
+    folds = ["fold1", "fold2", "fold3"]
+    for fold in folds:
+        for seed in seeds:
+            logging.info(f"Starting hyperparameter tuning for {fold}_seed{seed}")
+            config = TrainConfig(
+                fold=f"{fold}_seed{seed}",
+                model_type="logistic",  # Will be overridden per model
+                seed=seed,
+                output_dir=Path(f"experiments/hyperparameter_tuning_{fold}_seed{seed}"),
+            )
 
-        tuning_output_dir = Path(f"experiments/hyperparameter_tuning_fold3_seed{seed}")
-        results = run_hyperparameter_tuning(
-            config=config,
-            param_grids=param_grids,
-            tuning_output_dir=tuning_output_dir,
-            cv_folds=3,
-            n_iter=None,  # Use GridSearchCV for exact search
-        )
+            tuning_output_dir = Path(f"experiments/hyperparameter_tuning_{fold}_seed{seed}")
+            results = run_hyperparameter_tuning(
+                config=config,
+                param_grids=param_grids,
+                tuning_output_dir=tuning_output_dir,
+                cv_folds=3,
+                n_iter=None,  # Use GridSearchCV for exact search
+            )
 
-        logging.info(f"Tuning completed for fold3_seed{seed}. Check {tuning_output_dir}/ for results.")
+            logging.info(f"Tuning completed for {fold}_seed{seed}. Check {tuning_output_dir}/ for results.")

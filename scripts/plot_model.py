@@ -207,72 +207,109 @@ def plot_per_label_f1(per_label_df: pd.DataFrame, model_name: str, output_dir: P
     print(f"✅ Saved: {output_dir / 'per_label_f1.png'}")
 
 
-def plot_pr_curves(model_name: str, experiments_dir: Path, 
-                   output_dir: Path, fold: str = "fold1"):
-    """Plot Precision-Recall curves for the model."""
+def plot_pr_curves(model_name: str, experiments_dir: Path, output_dir: Path):
+    """Plot Precision-Recall curves for the model, averaged across all available folds."""
     fig, ax = plt.subplots(figsize=(10, 8))
     
     label_cols = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
     colors = plt.cm.tab10(np.linspace(0, 1, len(label_cols)))
     
-    pred_df = load_test_predictions(experiments_dir, model_name, fold)
-    if pred_df is None:
-        print(f"⚠️  No predictions found for {model_name}")
+    # Find all fold directories
+    if model_name.startswith("tfidf_"):
+        model_dir = experiments_dir / model_name
+    else:
+        model_dir = experiments_dir / model_name  # For others
+    
+    fold_dirs = sorted([d for d in model_dir.glob("fold*") if d.is_dir()])
+    if not fold_dirs:
+        print(f"⚠️  No fold directories found for {model_name}")
         return
     
-    # Compute PR curves for each label
-    all_precisions = []
-    all_recalls = []
-    label_pr_aucs = []
+    print(f"📊 Averaging PR curves across {len(fold_dirs)} folds: {[d.name for d in fold_dirs]}")
     
-    for label, color in zip(label_cols, colors):
-        true_col = label
-        prob_col = f"{label}_prob"
-        
-        if true_col not in pred_df.columns or prob_col not in pred_df.columns:
+    # Collect PR data for each label across folds
+    label_data = {label: {"precisions": [], "recalls": [], "aucs": []} for label in label_cols}
+    
+    for fold_dir in fold_dirs:
+        pred_path = fold_dir / "test_predictions.csv"
+        if not pred_path.exists():
             continue
         
-        y_true = pred_df[true_col].values
-        y_prob = pred_df[prob_col].values
+        pred_df = pd.read_csv(pred_path)
         
-        if len(np.unique(y_true)) < 2:
-            continue
-        
-        precision, recall, _ = precision_recall_curve(y_true, y_prob)
-        all_precisions.append(precision)
-        all_recalls.append(recall)
-        
-        # Calculate PR-AUC for this label
-        try:
+        for label in label_cols:
+            true_col = label
+            prob_col = f"{label}_prob"
+            
+            if true_col not in pred_df.columns or prob_col not in pred_df.columns:
+                continue
+            
+            y_true = pred_df[true_col].values
+            y_prob = pred_df[prob_col].values
+            
+            if len(np.unique(y_true)) < 2:
+                continue
+            
+            precision, recall, _ = precision_recall_curve(y_true, y_prob)
             pr_auc = average_precision_score(y_true, y_prob)
-            label_pr_aucs.append(pr_auc)
-        except:
-            pr_auc = 0.0
-        
-        # Plot individual label curve
-        ax.plot(recall, precision, label=f"{label} (AUC={pr_auc:.3f})", 
-                linewidth=2, color=color, alpha=0.7)
+            
+            label_data[label]["precisions"].append(precision)
+            label_data[label]["recalls"].append(recall)
+            label_data[label]["aucs"].append(pr_auc)
     
-    # Compute macro-averaged curve
-    if all_precisions:
-        recall_interp = np.linspace(0, 1, 100)
-        precision_interp = []
+    # Plot averaged curves for each label
+    for label, color in zip(label_cols, colors):
+        data = label_data[label]
+        if not data["aucs"]:
+            continue
         
-        for prec, rec in zip(all_precisions, all_recalls):
+        # Average AUC
+        avg_auc = np.mean(data["aucs"])
+        
+        # Average PR curve
+        recall_interp = np.linspace(0, 1, 100)
+        precision_interp_list = []
+        
+        for prec, rec in zip(data["precisions"], data["recalls"]):
             prec = np.array(prec)[::-1]
             rec = np.array(rec)[::-1]
             prec_interp = np.interp(recall_interp, rec, prec, left=1.0, right=0.0)
-            precision_interp.append(prec_interp)
+            precision_interp_list.append(prec_interp)
         
-        mean_precision = np.mean(precision_interp, axis=0)
-        macro_pr_auc = np.mean(label_pr_aucs) if label_pr_aucs else 0.0
+        avg_precision = np.mean(precision_interp_list, axis=0)
         
-        ax.plot(recall_interp, mean_precision, label=f"Macro-Avg (AUC={macro_pr_auc:.3f})", 
+        # Plot
+        ax.plot(recall_interp, avg_precision, label=f"{label} (AUC={avg_auc:.3f})", 
+                linewidth=2, color=color, alpha=0.7)
+    
+    # Compute macro-averaged curve
+    macro_precisions = []
+    macro_aucs = []
+    for label in label_cols:
+        data = label_data[label]
+        if data["aucs"]:
+            macro_aucs.append(np.mean(data["aucs"]))
+            # For macro, average the avg_precision per label
+            recall_interp = np.linspace(0, 1, 100)
+            precision_interp_list = []
+            for prec, rec in zip(data["precisions"], data["recalls"]):
+                prec = np.array(prec)[::-1]
+                rec = np.array(rec)[::-1]
+                prec_interp = np.interp(recall_interp, rec, prec, left=1.0, right=0.0)
+                precision_interp_list.append(prec_interp)
+            avg_precision = np.mean(precision_interp_list, axis=0)
+            macro_precisions.append(avg_precision)
+    
+    if macro_precisions:
+        overall_macro_precision = np.mean(macro_precisions, axis=0)
+        overall_macro_auc = np.mean(macro_aucs)
+        
+        ax.plot(recall_interp, overall_macro_precision, label=f"Macro-Avg (AUC={overall_macro_auc:.3f})", 
                 linewidth=3, color="black", linestyle="--")
     
     ax.set_xlabel("Recall", fontsize=12)
     ax.set_ylabel("Precision", fontsize=12)
-    ax.set_title(f"Precision-Recall Curves: {model_name.upper()}", fontsize=14, fontweight="bold")
+    ax.set_title(f"Precision-Recall Curves: {model_name.upper()} (Averaged)", fontsize=14, fontweight="bold")
     ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
     ax.grid(alpha=0.3)
     ax.set_xlim([0, 1])
@@ -284,45 +321,66 @@ def plot_pr_curves(model_name: str, experiments_dir: Path,
     print(f"✅ Saved: {output_dir / 'pr_curves.png'}")
 
 
-def plot_recall_at_90_precision(model_name: str, experiments_dir: Path,
-                                output_dir: Path, fold: str = "fold1"):
-    """Plot Recall at 90% Precision for the model."""
+def plot_recall_at_90_precision(model_name: str, experiments_dir: Path, output_dir: Path):
+    """Plot Recall at 90% Precision for the model, averaged across folds."""
     label_cols = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"]
     
-    pred_df = load_test_predictions(experiments_dir, model_name, fold)
-    if pred_df is None:
-        print(f"⚠️  No predictions found for {model_name}")
+    # Find all fold directories
+    if model_name.startswith("tfidf_"):
+        model_dir = experiments_dir / model_name
+    else:
+        model_dir = experiments_dir / model_name
+    
+    fold_dirs = sorted([d for d in model_dir.glob("fold*") if d.is_dir()])
+    if not fold_dirs:
+        print(f"⚠️  No fold directories found for {model_name}")
         return
     
+    print(f"📊 Averaging recall@90 across {len(fold_dirs)} folds")
+    
+    # Collect recall@90 for each label across folds
+    label_recall_at_90 = {label: [] for label in label_cols}
+    
+    for fold_dir in fold_dirs:
+        pred_path = fold_dir / "test_predictions.csv"
+        if not pred_path.exists():
+            continue
+        
+        pred_df = pd.read_csv(pred_path)
+        
+        for label in label_cols:
+            true_col = label
+            prob_col = f"{label}_prob"
+            
+            if true_col not in pred_df.columns or prob_col not in pred_df.columns:
+                continue
+            
+            y_true = pred_df[true_col].values
+            y_prob = pred_df[prob_col].values
+            
+            if len(np.unique(y_true)) < 2:
+                continue
+            
+            precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
+            
+            # Find recall at 90% precision
+            target_precision = 0.90
+            valid_idx = np.where(precision >= target_precision)[0]
+            
+            if len(valid_idx) > 0:
+                recall_at_90 = recall[valid_idx].max()
+            else:
+                recall_at_90 = 0.0
+            
+            label_recall_at_90[label].append(recall_at_90)
+    
+    # Average across folds
     results = []
     for label in label_cols:
-        true_col = label
-        prob_col = f"{label}_prob"
-        
-        if true_col not in pred_df.columns or prob_col not in pred_df.columns:
-            continue
-        
-        y_true = pred_df[true_col].values
-        y_prob = pred_df[prob_col].values
-        
-        if len(np.unique(y_true)) < 2:
-            continue
-        
-        precision, recall, thresholds = precision_recall_curve(y_true, y_prob)
-        
-        # Find recall at 90% precision
-        target_precision = 0.90
-        valid_idx = np.where(precision >= target_precision)[0]
-        
-        if len(valid_idx) > 0:
-            recall_at_90 = recall[valid_idx].max()
-        else:
-            recall_at_90 = 0.0
-        
-        results.append({
-            "label": label,
-            "recall_at_90": recall_at_90
-        })
+        recalls = label_recall_at_90[label]
+        if recalls:
+            avg_recall = np.mean(recalls)
+            results.append({"label": label, "recall_at_90": avg_recall})
     
     if not results:
         print("⚠️  No data for recall at 90% precision")
@@ -334,7 +392,7 @@ def plot_recall_at_90_precision(model_name: str, experiments_dir: Path,
     bars = ax.bar(df["label"], df["recall_at_90"], alpha=0.8, color="steelblue")
     ax.set_xlabel("Label", fontsize=12)
     ax.set_ylabel("Recall at 90% Precision", fontsize=12)
-    ax.set_title(f"Recall at 90% Precision: {model_name.upper()}", fontsize=14, fontweight="bold")
+    ax.set_title(f"Recall at 90% Precision: {model_name.upper()} (Averaged)", fontsize=14, fontweight="bold")
     ax.set_xticklabels(df["label"], rotation=45, ha="right")
     ax.grid(axis="y", alpha=0.3)
     ax.axhline(y=0, color="black", linewidth=0.5)
@@ -387,8 +445,6 @@ def main():
                        help="Directory containing experiment results")
     parser.add_argument("--output-dir", type=Path, default=Path("results"),
                        help="Output directory for plots")
-    parser.add_argument("--fold", type=str, default="fold1",
-                       help="Fold to use for PR curves and recall@90 (default: fold1)")
     
     args = parser.parse_args()
     
@@ -445,8 +501,8 @@ def main():
     print(f"   Output directory: {model_output_dir}")
     create_metrics_table(model_data, model_name, model_output_dir)
     plot_per_label_f1(per_label_df, model_name, model_output_dir)
-    plot_pr_curves(model_name, args.experiments_dir, model_output_dir, args.fold)
-    plot_recall_at_90_precision(model_name, args.experiments_dir, model_output_dir, args.fold)
+    plot_pr_curves(model_name, args.experiments_dir, model_output_dir)
+    plot_recall_at_90_precision(model_name, args.experiments_dir, model_output_dir)
     plot_precision_at_top1000(model_data, model_name, model_output_dir)
     
     print(f"\n✅ All plots saved to: {model_output_dir}")
