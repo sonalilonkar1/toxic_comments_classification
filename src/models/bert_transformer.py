@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Sequence
@@ -18,9 +19,26 @@ from transformers import (
     set_seed,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _sigmoid(logits: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-logits))
+
+
+def _compute_metrics(eval_pred):
+    """Compute metrics for multi-label classification."""
+    predictions, labels = eval_pred
+    predictions = _sigmoid(predictions)
+    
+    # Calculate metrics per label
+    f1_micro = f1_score(labels, predictions >= 0.5, average='micro')
+    f1_macro = f1_score(labels, predictions >= 0.5, average='macro')
+    
+    return {
+        'micro_f1': f1_micro,
+        'macro_f1': f1_macro,
+    }
 
 
 class _MultilabelTextDataset(Dataset):
@@ -55,9 +73,11 @@ class BertTrainingResult:
     """Container for transformer training artifacts."""
 
     test_probs: Dict[str, np.ndarray]
+    dev_probs: Dict[str, np.ndarray]  # Added for threshold tuning
     model_path: Path
     tokenizer_path: Path
     trainer_metrics: Dict[str, float]
+    trainer: Trainer  # Added to allow further predictions
 
 
 def train_multilabel_bert(
@@ -72,6 +92,11 @@ def train_multilabel_bert(
     seed: int = 42,
 ) -> BertTrainingResult:
     """Fine-tune a transformer using HuggingFace Trainer for multi-label toxic comments."""
+
+    logger.info(f"Starting BERT training with model: {params.get('model_name', 'bert-base-uncased')}")
+    logger.info(f"Training params: lr={params.get('learning_rate', 2e-5)}, batch_size={params.get('train_batch_size', 8)}, epochs={params.get('num_epochs', 3.0)}")
+    logger.info(f"Dataset sizes: train={len(train_texts)}, dev={len(dev_texts)}, test={len(test_texts)}")
+    logger.info(f"Labels: {label_cols}")
 
     model_name = str(params.get("model_name", "bert-base-uncased"))
     max_length = int(params.get("max_length", 256))
@@ -92,6 +117,7 @@ def train_multilabel_bert(
     final_model_dir = model_dir / "model"
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.info(f"Loading tokenizer and model from {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(
         model_name,
@@ -100,25 +126,15 @@ def train_multilabel_bert(
     )
 
     set_seed(seed)
+    logger.info(f"Set random seed to {seed}")
 
+    logger.info("Tokenizing datasets...")
     train_dataset = _MultilabelTextDataset(train_texts, train_labels, tokenizer, max_length)
     dev_dataset = _MultilabelTextDataset(dev_texts, dev_labels, tokenizer, max_length)
     zero_test_labels = np.zeros((len(test_texts), len(label_cols)), dtype=np.float32)
     test_dataset = _MultilabelTextDataset(test_texts, zero_test_labels, tokenizer, max_length)
 
-    def _compute_metrics(eval_pred):
-        logits, labels = eval_pred
-        probs = _sigmoid(logits)
-        preds = (probs >= 0.5).astype(int)
-        return {
-            "micro_f1": float(f1_score(labels, preds, average="micro", zero_division=0)),
-            "macro_f1": float(f1_score(labels, preds, average="macro", zero_division=0)),
-            "micro_precision": float(
-                precision_score(labels, preds, average="micro", zero_division=0)
-            ),
-            "micro_recall": float(recall_score(labels, preds, average="micro", zero_division=0)),
-        }
-
+    logger.info("Setting up training arguments...")
     training_args = TrainingArguments(
         output_dir=str(checkpoints_dir),
         overwrite_output_dir=True,
@@ -146,6 +162,9 @@ def train_multilabel_bert(
         fp16=bool(fp16_requested and torch.cuda.is_available()),
     )
 
+    if fp16_requested and not torch.cuda.is_available():
+        logger.warning("FP16 requested but CUDA not available, using FP32")
+
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -155,20 +174,33 @@ def train_multilabel_bert(
         compute_metrics=_compute_metrics,
     )
 
+    logger.info("Starting training...")
     trainer.train()
+    logger.info("Training completed")
+
     trainer.save_model(str(final_model_dir))
     tokenizer.save_pretrained(str(tokenizer_dir))
+    logger.info(f"Model and tokenizer saved to {final_model_dir} and {tokenizer_dir}")
 
+    logger.info("Predicting on dev set...")
+    dev_predictions = trainer.predict(dev_dataset)
+    dev_probs_arr = _sigmoid(dev_predictions.predictions)
+    dev_probs = {label: dev_probs_arr[:, idx] for idx, label in enumerate(label_cols)}
+
+    logger.info("Predicting on test set...")
     predictions = trainer.predict(test_dataset)
     probs = _sigmoid(predictions.predictions)
     test_probs = {label: probs[:, idx] for idx, label in enumerate(label_cols)}
 
     metrics = predictions.metrics or {}
     metrics = {key: float(value) for key, value in metrics.items()}
+    logger.info(f"Final metrics: {metrics}")
 
     return BertTrainingResult(
         test_probs=test_probs,
+        dev_probs=dev_probs,
         model_path=final_model_dir,
         tokenizer_path=tokenizer_dir,
         trainer_metrics=metrics,
+        trainer=trainer,
     )
