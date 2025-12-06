@@ -2,7 +2,7 @@
 
 import os
 from typing import Dict, List, Optional, Tuple, Union, Any
-
+from sklearn.metrics import f1_score, roc_auc_score, average_precision_score
 import numpy as np
 import pandas as pd
 import torch
@@ -59,8 +59,10 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-def compute_metrics(p: EvalPrediction) -> Dict[str, float]:
+def _compute_metrics(p: EvalPrediction) -> Dict[str, float]:
     """Compute metrics for HuggingFace Trainer."""
+    
+    
     preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
     # Apply sigmoid to logits
     probs = 1.0 / (1.0 + np.exp(-preds))
@@ -147,7 +149,7 @@ def train_bert_model(
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=_compute_metrics,
         loss_type=loss_type,
         loss_params=loss_params,
     )

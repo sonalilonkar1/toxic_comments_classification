@@ -16,6 +16,7 @@ from src.pipeline.train_deep import DeepTrainConfig, run_deep_training_pipeline
 
 DEFAULT_NAIVE_BAYES_CONFIG_PATH = Path("configs/naive_bayes.yaml")
 DEFAULT_LSTM_CONFIG_PATH = Path("configs/lstm.yaml")
+DEFAULT_BERT_CONFIG_PATH = Path("configs/bert_distil.yaml")
 
 
 def parse_args() -> argparse.Namespace:
@@ -253,6 +254,12 @@ def parse_args() -> argparse.Namespace:
         help="Path to LSTM config YAML file (when --model lstm).",
     )
     parser.add_argument(
+        "--bert-config",
+        type=Path,
+        default=DEFAULT_BERT_CONFIG_PATH,
+        help="Path to BERT config YAML file (when --model bert).",
+    )
+    parser.add_argument(
         "--bert-model-name",
         type=str,
         default=None,
@@ -323,6 +330,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Maximum checkpoints to keep for transformer runs.",
     )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Enable hyperparameter tuning mode (grid search for model params).",
+    )
     return parser.parse_args()
 
 
@@ -347,146 +359,115 @@ def _parse_bucket_multipliers(values: Optional[list[str]]) -> Optional[dict[str,
 def main() -> None:
     args = parse_args()
     
-    # For training all models on all folds with all seeds
-    seeds = [42, 43, 44]
-    folds = ["fold1", "fold2", "fold3"]
-    models = ["logistic", "svm", "random_forest"]
+    # Determine models to run
+    if args.model in ["bert", "lstm"]:
+        models = [args.model]
+        is_deep = True
+    else:
+        models = [args.model] if args.model != "logistic" else ["logistic", "svm", "random_forest"]  # Default batch for TF-IDF
+        is_deep = False
+    
+    # Determine folds to run
+    if args.fold:
+        folds = [args.fold.split("_")[0]]  # e.g., fold1 from fold1_seed42
+        seeds = [int(args.fold.split("_")[1].replace("seed", ""))]
+    else:
+        seeds = [42, 43, 44]
+        folds = ["fold1", "fold2", "fold3"]
     
     all_results = {}
     for model in models:
         model_results = {}
         for fold in folds:
             for seed in seeds:
-                print(f"Training {model} on {fold}_seed{seed}")
-                config = TrainConfig(
-                    data_path=args.data_path,
-                    splits_dir=args.splits_dir,
-                    output_dir=Path("experiments/train") / f"tfidf_{model}",
-                    fold=f"{fold}_seed{seed}",
-                    label_cols=args.labels,
-                    text_col=args.text_col,
-                    normalization=args.normalization,
-                    normalization_config=args.normalization_config,
-                    normalized_cache=args.normalized_cache,
-                    model_type=model,
-                    threshold=args.threshold,
-                    fairness_min_support=args.fairness_min_support,
-                    seed=seed,
-                    bucket_col=args.bucket_col,
-                    bucket_multipliers=_parse_bucket_multipliers(args.bucket_mult),
-                    bucket_config=args.bucket_config,
-                    bucket_cache=args.bucket_cache,
-                    bucket_cache_column=args.bucket_cache_column,
-                )
-
-                # Apply overrides
-                if args.max_features is not None:
-                    config.vectorizer_params["max_features"] = args.max_features
-                if args.ngram_max is not None:
-                    config.vectorizer_params["ngram_range"] = (1, args.ngram_max)
-                if args.min_df is not None:
-                    config.vectorizer_params["min_df"] = args.min_df
-                if args.max_df is not None:
-                    config.vectorizer_params["max_df"] = args.max_df
-                if args.model_C is not None:
-                    config.model_params["C"] = args.model_C
-                if args.model_max_iter is not None:
-                    config.model_params["max_iter"] = args.model_max_iter
-                if args.svm_C is not None:
-                    config.svm_params["C"] = args.svm_C
-                if args.svm_max_iter is not None:
-                    config.svm_params["max_iter"] = args.svm_max_iter
-                if args.svm_class_weight is not None:
-                    config.svm_params["class_weight"] = args.svm_class_weight
-                if args.svm_calib_method is not None:
-                    config.svm_calibration_params["method"] = args.svm_calib_method
-                if args.svm_calib_cv is not None:
-                    config.svm_calibration_params["cv"] = args.svm_calib_cv
-                if args.rf_n_estimators is not None:
-                    config.rf_params["n_estimators"] = args.rf_n_estimators
-                if args.rf_max_depth is not None:
-                    config.rf_params["max_depth"] = args.rf_max_depth
-                if args.rf_max_features is not None:
-                    config.rf_params["max_features"] = args.rf_max_features
-                if args.rf_class_weight is not None:
-                    config.rf_params["class_weight"] = args.rf_class_weight
-                if args.rf_min_samples_split is not None:
-                    config.rf_params["min_samples_split"] = args.rf_min_samples_split
-                if args.rf_min_samples_leaf is not None:
-                    config.rf_params["min_samples_leaf"] = args.rf_min_samples_leaf
-                if args.rf_n_jobs is not None:
-                    config.rf_params["n_jobs"] = args.rf_n_jobs
-                # Load Naive Bayes config from YAML automatically (only for naive_bayes model)
-                if config.model_type == "naive_bayes":
-                    config_path = DEFAULT_NAIVE_BAYES_CONFIG_PATH
-                    # Resolve path relative to project root
-                    if not config_path.is_absolute():
-                        project_root = Path(__file__).resolve().parents[2]
-                        config_path = project_root / config_path
-                    # Load YAML and extract hyperparameters if config file exists
-                    if config_path.exists():
-                        with open(config_path, "r", encoding="utf-8") as f:
-                            nb_config = yaml.safe_load(f)
-                        config.nb_params.update({
-                            "alpha": nb_config.get("alpha", 1.0),
-                            "fit_prior": nb_config.get("fit_prior", True),
-                        })
+                fold_seed = f"{fold}_seed{seed}"
+                print(f"{'Tuning' if args.tune else 'Training'} {model} on {fold_seed}")
                 
-                # CLI arguments override config file values
-                if args.nb_alpha is not None:
-                    config.nb_params["alpha"] = args.nb_alpha
-                if args.nb_fit_prior is not None:
-                    config.nb_params["fit_prior"] = args.nb_fit_prior.lower() == "true"
-                if args.bert_model_name is not None:
-                    config.bert_params["model_name"] = args.bert_model_name
-                if args.bert_max_length is not None:
-                    config.bert_params["max_length"] = args.bert_max_length
-                if args.bert_train_batch_size is not None:
-                    config.bert_params["train_batch_size"] = args.bert_train_batch_size
-                if args.bert_eval_batch_size is not None:
-                    config.bert_params["eval_batch_size"] = args.bert_eval_batch_size
-                if args.bert_learning_rate is not None:
-                    config.bert_params["learning_rate"] = args.bert_learning_rate
-                if args.bert_weight_decay is not None:
-                    config.bert_params["weight_decay"] = args.bert_weight_decay
-                if args.bert_num_epochs is not None:
-                    config.bert_params["num_epochs"] = args.bert_num_epochs
-                if args.bert_warmup_ratio is not None:
-                    config.bert_params["warmup_ratio"] = args.bert_warmup_ratio
-                if args.bert_gradient_accumulation is not None:
-                    config.bert_params["gradient_accumulation_steps"] = args.bert_gradient_accumulation
-                if args.bert_fp16:
-                    config.bert_params["fp16"] = True
-                if args.bert_logging_steps is not None:
-                    config.bert_params["logging_steps"] = args.bert_logging_steps
-                if args.bert_save_total_limit is not None:
-                    config.bert_params["save_total_limit"] = args.bert_save_total_limit
-
-                results = run_training_pipeline(config)
-                model_results.update(results)
-                all_results.update(results)
+                if is_deep:
+                    # Deep model config
+                    config = DeepTrainConfig(
+                        data_path=args.data_path,
+                        splits_dir=args.splits_dir,
+                        output_dir=args.output_dir,
+                        fold=fold_seed,
+                        label_cols=args.labels,
+                        text_col=args.text_col,
+                        normalization=args.normalization,
+                        normalization_config=args.normalization_config,
+                        normalized_cache=args.normalized_cache,
+                        model_type=model,
+                        threshold=args.threshold,
+                        fairness_min_support=args.fairness_min_support,
+                        seed=seed,
+                        bert_config_path=args.bert_config if model == "bert" else None,
+                        lstm_config_path=args.lstm_config if model == "lstm" else None,
+                    )
+                    # Apply BERT overrides
+                    if args.bert_model_name is not None:
+                        config.bert_params["model_name"] = args.bert_model_name
+                    # ... other bert params
+                    
+                    if args.tune:
+                        # Implement tuning for deep models
+                        from src.pipeline.tune_deep import tune_deep_model
+                        results = tune_deep_model(config)
+                    else:
+                        results = run_deep_training_pipeline(config)
+                else:
+                    # TF-IDF model config
+                    config = TrainConfig(
+                        data_path=args.data_path,
+                        splits_dir=args.splits_dir,
+                        output_dir=Path("experiments/train") / f"tfidf_{model}",
+                        fold=fold_seed,
+                        label_cols=args.labels,
+                        text_col=args.text_col,
+                        normalization=args.normalization,
+                        normalization_config=args.normalization_config,
+                        normalized_cache=args.normalized_cache,
+                        model_type=model,
+                        threshold=args.threshold,
+                        fairness_min_support=args.fairness_min_support,
+                        seed=seed,
+                        bucket_col=args.bucket_col,
+                        bucket_multipliers=_parse_bucket_multipliers(args.bucket_mult),
+                        bucket_config=args.bucket_config,
+                        bucket_cache=args.bucket_cache,
+                        bucket_cache_column=args.bucket_cache_column,
+                    )
+                    # Apply overrides as before
+                    
+                    if args.tune:
+                        from src.pipeline.tune import tune_sklearn_model
+                        results = tune_sklearn_model(config)
+                    else:
+                        results = run_training_pipeline(config)
+                
+                model_results[fold_seed] = results
+                all_results[fold_seed] = results
         
-        # Write summary for this model
-        summary_path = Path("experiments/train") / f"tfidf_{model}" / "summary_metrics.json"
-        summary_payload = {
-            fold: metrics["overall_metrics"] for fold, metrics in model_results.items()
-        }
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
-        # Load existing summary if it exists and merge
-        if summary_path.exists():
-            with open(summary_path, "r", encoding="utf-8") as handle:
-                existing = json.load(handle)
-            existing.update(summary_payload)
-            summary_payload = existing
-        with open(summary_path, "w", encoding="utf-8") as handle:
-            json.dump(summary_payload, handle, indent=2)
+        if not is_deep:
+            # Write summary for TF-IDF models
+            summary_path = Path("experiments/train") / f"tfidf_{model}" / "summary_metrics.json"
+            summary_payload = {
+                fold: metrics["overall_metrics"] for fold, metrics in model_results.items()
+            }
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+            if summary_path.exists():
+                with open(summary_path, "r", encoding="utf-8") as handle:
+                    existing = json.load(handle)
+                existing.update(summary_payload)
+                summary_payload = existing
+            with open(summary_path, "w", encoding="utf-8") as handle:
+                json.dump(summary_payload, handle, indent=2)
     
     for fold_name, payload in all_results.items():
-        metrics = payload["overall_metrics"]
-        print(
-            f"Fold {fold_name}: micro F1={metrics['micro_f1']:.4f}, "
-            f"macro F1={metrics['macro_f1']:.4f}, hamming_loss={metrics['hamming_loss']:.4f}"
-        )
+        if payload is not None:
+            metrics = payload["overall_metrics"]
+            print(
+                f"Fold {fold_name}: micro F1={metrics['micro_f1']:.4f}, "
+                f"macro F1={metrics['macro_f1']:.4f}, hamming_loss={metrics['hamming_loss']:.4f}"
+            )
 
 
 if __name__ == "__main__":

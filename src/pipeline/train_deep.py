@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -14,6 +15,17 @@ import pandas as pd
 import torch
 import yaml
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('train_deep.log', mode='a')
+    ]
+)
+logger = logging.getLogger(__name__)
+
 from src.data.dataset import load_fold_frames
 from src.data.normalization import (
     DEFAULT_NORMALIZATION_CONFIG_PATH,
@@ -23,7 +35,7 @@ from src.data.normalization import (
 
 DEFAULT_LSTM_CONFIG_PATH = Path("configs/lstm.yaml")
 from src.data.preprocess import rich_normalize, toy_normalize
-from src.models.deep.bert import train_bert_model
+from src.models.bert_transformer import train_multilabel_bert
 from src.models.deep.lstm import train_lstm_model, predict_lstm
 from src.features.lstm_preprocessing import (
     LSTMPreprocessor,
@@ -88,10 +100,12 @@ class DeepTrainConfig:
     # Preprocessing
     normalization: str = "toy"
     normalization_config: Optional[Path] = DEFAULT_NORMALIZATION_CONFIG_PATH
+    normalized_cache: Optional[Path] = None
     
     # Model config
     model_type: str = "bert" # 'bert' or 'lstm'
     bert_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_BERT_PARAMS.copy())
+    bert_config_path: Optional[Path] = None  # Path to BERT YAML config
     lstm_params: Dict[str, Any] = field(default_factory=lambda: DEFAULT_LSTM_PARAMS.copy())
     lstm_config_path: Optional[Path] = DEFAULT_LSTM_CONFIG_PATH  # Path to LSTM YAML config
     loss_type: str = "bce"
@@ -101,6 +115,7 @@ class DeepTrainConfig:
     target_precision: Optional[float] = 0.90
     top_k: int = 1000
     fairness_min_support: int = 50
+    threshold: float = 0.5
     seed: int = 42
 
     def __post_init__(self) -> None:
@@ -109,8 +124,37 @@ class DeepTrainConfig:
         self.output_dir = Path(self.output_dir)
         if self.normalization_config:
             self.normalization_config = Path(self.normalization_config)
+        if self.normalized_cache:
+            self.normalized_cache = Path(self.normalized_cache)
         if self.lstm_config_path:
             self.lstm_config_path = Path(self.lstm_config_path)
+        if self.bert_config_path:
+            self.bert_config_path = Path(self.bert_config_path)
+        
+        # Load BERT config from YAML if model_type is bert and config file exists
+        if self.model_type == "bert" and self.bert_config_path:
+            # Resolve path relative to project root if not absolute
+            if not self.bert_config_path.is_absolute():
+                project_root = Path(__file__).resolve().parents[2]
+                config_path = project_root / self.bert_config_path
+            else:
+                config_path = self.bert_config_path
+            
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    bert_config = yaml.safe_load(f)
+                
+                # Update bert_params with values from YAML
+                self.bert_params.update({
+                    "model_name": bert_config.get("model", {}).get("params", {}).get("model_name", self.bert_params.get("model_name")),
+                    "max_length": bert_config.get("model", {}).get("params", {}).get("max_length", self.bert_params.get("max_length")),
+                    "batch_size": bert_config.get("model", {}).get("params", {}).get("batch_size", self.bert_params.get("batch_size")),
+                    "learning_rate": bert_config.get("model", {}).get("params", {}).get("learning_rate", self.bert_params.get("learning_rate")),
+                    "epochs": bert_config.get("model", {}).get("params", {}).get("epochs", self.bert_params.get("epochs")),
+                })
+                # Add tune_params if present
+                if "tune_params" in bert_config.get("model", {}).get("params", {}):
+                    self.bert_params["tune_params"] = bert_config["model"]["params"]["tune_params"]
         
         # Load LSTM config from YAML if model_type is lstm and config file exists
         if self.model_type == "lstm" and self.lstm_config_path:
@@ -157,13 +201,18 @@ class DeepTrainConfig:
 def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
     """Execute Deep Learning training pipeline."""
     
+    logger.info(f"Starting deep training pipeline for {config.model_type}")
+    logger.info(f"Config: data_path={config.data_path}, output_dir={config.output_dir}, fold={config.fold}")
+    
     # Load Data
+    logger.info("Loading fold frames...")
     base_df, fold_frames, identity_cols, _ = load_fold_frames(
         seed=config.seed,
         data_path=config.data_path,
         splits_dir=config.splits_dir,
     )
     label_cols = config.resolve_label_cols(base_df)
+    logger.info(f"Loaded data with {len(base_df)} samples, labels: {label_cols}")
     
     target_folds: Iterable[str]
     if config.fold:
@@ -172,22 +221,27 @@ def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
         target_folds = [config.fold]
     else:
         target_folds = sorted(fold_frames.keys())
-
+    
+    logger.info(f"Target folds: {list(target_folds)}")
+    
     # Resolve Normalizer
     if config.normalization == "config" and config.normalization_config:
+        logger.info(f"Loading normalization config from {config.normalization_config}")
         norm_profile = load_normalization_config(config.normalization_config)
         normalizer = build_normalizer(norm_profile)
     elif config.normalization == "rich":
         normalizer = rich_normalize
     else:
         normalizer = toy_normalize
+    logger.info(f"Using normalization: {config.normalization}")
 
     results = {}
 
     for fold_name in target_folds:
-        print(f"Starting Fold: {fold_name}")
+        logger.info(f"Starting training for fold: {fold_name}")
         fold_dir = _prepare_fold_dir(config.output_dir, fold_name, config)
         
+        start_time = time.time()
         metrics = _train_single_deep_fold(
             fold_name=fold_name,
             fold_splits=fold_frames[fold_name],
@@ -197,6 +251,10 @@ def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
             config=config,
             normalizer=normalizer,
         )
+        elapsed = time.time() - start_time
+        logger.info(f"Completed fold {fold_name} in {elapsed:.2f} seconds")
+        logger.info(f"Fold {fold_name} metrics: {metrics['overall_metrics']}")
+        
         results[fold_name] = metrics
 
     # Save summary
@@ -204,6 +262,7 @@ def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
     summary_payload = {k: v["overall_metrics"] for k, v in results.items()}
     with open(summary_path, "w") as f:
         json.dump(summary_payload, f, indent=2)
+    logger.info(f"Summary saved to {summary_path}")
 
     return results
 
@@ -218,6 +277,9 @@ def _train_single_deep_fold(
     normalizer: Any,
 ) -> Dict[str, Any]:
     
+    logger.info(f"Training {config.model_type} for fold {fold_name}")
+    logger.info(f"Train samples: {len(fold_splits['train'])}, Dev: {len(fold_splits['dev'])}, Test: {len(fold_splits['test'])}")
+    
     # Data Prep
     train_df = fold_splits["train"].reset_index(drop=True)
     dev_df = fold_splits["dev"].reset_index(drop=True)
@@ -226,6 +288,7 @@ def _train_single_deep_fold(
     # Normalize Text
     # Note: Deep models handle raw text reasonably well, but we still apply 
     # the requested normalization (e.g. for obfuscation)
+    logger.info("Normalizing text data...")
     X_train = train_df[config.text_col].apply(lambda x: normalizer(str(x))).tolist()
     X_dev = dev_df[config.text_col].apply(lambda x: normalizer(str(x))).tolist()
     X_test = test_df[config.text_col].apply(lambda x: normalizer(str(x))).tolist()
@@ -234,65 +297,63 @@ def _train_single_deep_fold(
     y_dev = dev_df[label_cols].values.astype(int)
     y_test = test_df[label_cols].values.astype(int)
     
+    logger.info(f"Data shapes - X_train: {len(X_train)}, y_train: {y_train.shape}")
+    
     latency_sec = 0.0
     
     # Train Model
     if config.model_type == "bert":
-        trainer, tokenizer = train_bert_model(
-            model_name=config.bert_params["model_name"],
-            X_train_text=X_train,
-            y_train=y_train,
-            X_val_text=X_dev,
-            y_val=y_dev,
-            output_dir=str(fold_dir / "checkpoints"),
-            num_labels=len(label_cols),
-            max_length=config.bert_params.get("max_length", 128),
-            batch_size=config.bert_params.get("batch_size", 16),
-            epochs=config.bert_params.get("epochs", 3),
-            learning_rate=config.bert_params.get("learning_rate", 2e-5),
-            fp16=config.bert_params.get("fp16", False),
+        logger.info(f"Training BERT model: {config.bert_params['model_name']}")
+        logger.info(f"BERT params: lr={config.bert_params['learning_rate']}, batch_size={config.bert_params['train_batch_size']}, epochs={config.bert_params['num_epochs']}")
+        
+        # Prepare params dict for the function
+        bert_params = {
+            "model_name": config.bert_params["model_name"],
+            "max_length": config.bert_params.get("max_length", 128),
+            "train_batch_size": config.bert_params.get("batch_size", 16),
+            "eval_batch_size": config.bert_params.get("batch_size", 16) * 2,
+            "learning_rate": config.bert_params.get("learning_rate", 2e-5),
+            "weight_decay": 0.01,
+            "num_epochs": config.bert_params.get("epochs", 3),
+            "warmup_ratio": 0.06,
+            "gradient_accumulation_steps": 1,
+            "fp16": config.bert_params.get("fp16", False),
+            "logging_steps": 50,
+            "save_total_limit": 1,
+        }
+        
+        result = train_multilabel_bert(
+            train_texts=X_train,
+            train_labels=y_train,
+            dev_texts=X_dev,
+            dev_labels=y_dev,
+            test_texts=X_test,
+            label_cols=label_cols,
+            model_dir=fold_dir,
+            params=bert_params,
             seed=config.seed,
-            loss_type=config.loss_type,
-            loss_params=config.loss_params,
         )
         
-        # Predict on Dev to set thresholds
-        # Note: Trainer.predict returns named tuple
-        dev_out = trainer.predict(trainer.eval_dataset)
-        dev_logits = dev_out.predictions
-        # Apply sigmoid
-        dev_probs_arr = 1.0 / (1.0 + np.exp(-dev_logits))
+        logger.info("BERT training completed")
         
-        # Create dict of probs for metric helpers
-        dev_probs = {label: dev_probs_arr[:, i] for i, label in enumerate(label_cols)}
+        # Use dev_probs from result
+        dev_probs = result.dev_probs
         
-        # Determine thresholds
+        # Use test_probs from result
+        test_probs = result.test_probs
+        
+        # Thresholds
         if config.target_precision:
             thresholds = find_precision_thresholds(
                 y_dev, dev_probs, label_cols, target_precision=config.target_precision
             )
+            logger.info(f"Precision thresholds set to: {thresholds}")
         else:
             thresholds = 0.5
-
-        # Predict on Test
-        # We need to re-tokenize test data using the *trained* tokenizer (though for BERT it's static)
-        test_encodings = tokenizer(
-            X_test, truncation=True, padding=True, max_length=config.bert_params.get("max_length", 128)
-        )
-        from src.models.deep.bert import ToxicDataset
-        test_dataset = ToxicDataset(test_encodings) # No labels needed for prediction, but nice to have
+            logger.info("Using default threshold of 0.5")
         
-        t0 = time.time()
-        test_out = trainer.predict(test_dataset)
-        latency_sec = time.time() - t0
-        
-        test_logits = test_out.predictions
-        test_probs_arr = 1.0 / (1.0 + np.exp(-test_logits))
-        test_probs = {label: test_probs_arr[:, i] for i, label in enumerate(label_cols)}
-        
-        # Save model
-        trainer.save_model(str(fold_dir / "final_model"))
-        tokenizer.save_pretrained(str(fold_dir / "final_model"))
+        # Trainer metrics
+        trainer_metrics = result.trainer_metrics
 
     elif config.model_type == "lstm":
         # Preprocess texts for LSTM (tokenize and pad)
@@ -440,6 +501,7 @@ def _train_single_deep_fold(
         raise ValueError(f"Unknown deep model type: {config.model_type}")
 
     # Calculate Metrics
+    logger.info("Computing metrics...")
     y_test_pred = probs_to_preds(test_probs, threshold=thresholds)
     
     overall_metrics, per_label_df = compute_multilabel_metrics(y_test, y_test_pred, label_cols, prob_dict=test_probs)
@@ -452,11 +514,14 @@ def _train_single_deep_fold(
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
     overall_metrics.update(top_k_metrics)
     
+    logger.info(f"Overall metrics: {overall_metrics}")
+    
     fairness_df = compute_fairness_slices(
         test_df, y_test, y_test_pred, label_cols, identity_cols, min_support=config.fairness_min_support
     )
     
     # Save Artifacts
+    logger.info("Saving artifacts...")
     _persist_deep_artifacts(
         fold_dir=fold_dir,
         fold_name=fold_name,
@@ -469,6 +534,8 @@ def _train_single_deep_fold(
         test_probs=test_probs,
         y_test_pred=y_test_pred,
     )
+    
+    logger.info(f"Fold {fold_name} training completed successfully")
     
     return {
         "overall_metrics": overall_metrics,
