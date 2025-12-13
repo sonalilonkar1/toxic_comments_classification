@@ -18,6 +18,7 @@ def run_bert_training(fold: str, seed: int):
     cmd = [
         sys.executable, "-m", "src.cli.train_pipeline",
         "--model", "bert",
+        "--tune",  # Enable tuning
         "--fold", fold_name,
         "--data-path", str(PROJECT_ROOT / "data" / "raw" / "train.csv"),
         "--splits-dir", str(PROJECT_ROOT / "data" / "splits"),

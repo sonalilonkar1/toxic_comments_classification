@@ -19,6 +19,13 @@ DEFAULT_LSTM_CONFIG_PATH = Path("configs/lstm.yaml")
 DEFAULT_BERT_CONFIG_PATH = Path("configs/bert_distil.yaml")
 
 
+def load_tfidf_config(config_path: Path, model: str) -> dict:
+    """Load TF-IDF model config from YAML."""
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    return config.get("model", {}).get("params", {})
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run the reusable TF-IDF + logistic training pipeline."
@@ -75,6 +82,12 @@ def parse_args() -> argparse.Namespace:
         default="logistic",
         choices=["logistic", "svm", "random_forest", "naive_bayes", "xgboost", "bert", "lstm"],
         help="Model type to train (TF-IDF variants or transformer).",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to YAML config file for model parameters (for TF-IDF models).",
     )
     parser.add_argument(
         "--threshold",
@@ -369,8 +382,13 @@ def main() -> None:
     
     # Determine folds to run
     if args.fold:
-        folds = [args.fold.split("_")[0]]  # e.g., fold1 from fold1_seed42
-        seeds = [int(args.fold.split("_")[1].replace("seed", ""))]
+        if is_deep:
+            fold_seed = args.fold
+            folds = [fold_seed]
+            seeds = [int(args.fold.split("_")[1].replace("seed", ""))]
+        else:
+            folds = [args.fold.split("_")[0]]
+            seeds = [int(args.fold.split("_")[1].replace("seed", ""))]
     else:
         seeds = [42, 43, 44]
         folds = ["fold1", "fold2", "fold3"]
@@ -380,7 +398,10 @@ def main() -> None:
         model_results = {}
         for fold in folds:
             for seed in seeds:
-                fold_seed = f"{fold}_seed{seed}"
+                if is_deep:
+                    fold_seed = fold  # fold is already fold_seed for deep
+                else:
+                    fold_seed = f"{fold}_seed{seed}"
                 print(f"{'Tuning' if args.tune else 'Training'} {model} on {fold_seed}")
                 
                 if is_deep:
@@ -411,10 +432,39 @@ def main() -> None:
                         # Implement tuning for deep models
                         from src.pipeline.tune_deep import tune_deep_model
                         results = tune_deep_model(config)
+                        # tune_deep_model returns metrics_dict directly
+                        all_results[fold_seed] = results
                     else:
                         results = run_deep_training_pipeline(config)
+                        # run_deep_training_pipeline returns {fold: metrics_dict}
+                        all_results[fold_seed] = results[fold_seed]
                 else:
                     # TF-IDF model config
+                    # Load params from config if provided
+                    if args.config:
+                        config_params = load_tfidf_config(args.config, model)
+                        # Override args with config values
+                        if 'C' in config_params:
+                            args.model_C = config_params['C']
+                        if 'penalty' in config_params:
+                            args.model_penalty = config_params['penalty']
+                        if 'max_iter' in config_params:
+                            args.model_max_iter = config_params['max_iter']
+                        if 'class_weight' in config_params:
+                            args.model_class_weight = config_params['class_weight']
+                        if 'kernel' in config_params:
+                            args.model_kernel = config_params['kernel']
+                        if 'gamma' in config_params:
+                            args.model_gamma = config_params['gamma']
+                        if 'n_estimators' in config_params:
+                            args.model_n_estimators = config_params['n_estimators']
+                        if 'max_depth' in config_params:
+                            args.model_max_depth = config_params['max_depth']
+                        if 'min_samples_split' in config_params:
+                            args.model_min_samples_split = config_params['min_samples_split']
+                        if 'min_samples_leaf' in config_params:
+                            args.model_min_samples_leaf = config_params['min_samples_leaf']
+                    
                     config = TrainConfig(
                         data_path=args.data_path,
                         splits_dir=args.splits_dir,
@@ -450,7 +500,7 @@ def main() -> None:
             # Write summary for TF-IDF models
             summary_path = Path("experiments/train") / f"tfidf_{model}" / "summary_metrics.json"
             summary_payload = {
-                fold: metrics["overall_metrics"] for fold, metrics in model_results.items()
+                fold: metrics[fold]["overall_metrics"] for fold, metrics in model_results.items()
             }
             summary_path.parent.mkdir(parents=True, exist_ok=True)
             if summary_path.exists():
@@ -463,7 +513,7 @@ def main() -> None:
     
     for fold_name, payload in all_results.items():
         if payload is not None:
-            metrics = payload["overall_metrics"]
+            metrics = payload[fold_name]["overall_metrics"]
             print(
                 f"Fold {fold_name}: micro F1={metrics['micro_f1']:.4f}, "
                 f"macro F1={metrics['macro_f1']:.4f}, hamming_loss={metrics['hamming_loss']:.4f}"

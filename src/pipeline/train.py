@@ -202,6 +202,7 @@ def run_training_pipeline(config: TrainConfig) -> Dict[str, Dict[str, object]]:
         seed=config.seed,
         data_path=config.data_path,
         splits_dir=config.splits_dir,
+        fold=config.fold,
     )
     label_cols = config.resolve_label_cols(base_df)
 

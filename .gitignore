@@ -12,3 +12,5 @@ proposal.md
 plan.md
 .DS_Store
 data/raw
+data/splits
+other/

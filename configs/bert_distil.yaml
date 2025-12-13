@@ -14,7 +14,7 @@ model:
     batch_size: 16
     learning_rate: 2.0e-5
     epochs: 3
-    # Hyperparameter grid for tuning
+    # Hyperparameter grid for tuning (single values for quick test)
     tune_params:
       learning_rate: [2e-5]
       batch_size: [8]

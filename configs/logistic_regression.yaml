@@ -1,0 +1,21 @@
+experiment_name: tfidf_logistic_tuning
+data:
+  raw_path: data/raw/train.csv
+  split_path: data/splits/fold1_seed42.json  # Will be overridden by CLI
+  text_column: comment_text
+  normalized_column: normalized_text
+  label_columns: [toxic, severe_toxic, obscene, threat, insult, identity_hate]
+  cache_dir: data/processed
+model:
+  type: logistic
+  params:
+    C: 1.0
+    penalty: l2
+    max_iter: 1000
+    class_weight: null
+    # Hyperparameter grid for tuning
+    tune_params:
+      C: [0.1, 1.0, 10.0]
+      penalty: [l1, l2]
+      max_iter: [1000]
+      class_weight: [null, balanced]

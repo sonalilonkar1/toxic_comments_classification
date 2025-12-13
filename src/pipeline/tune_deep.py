@@ -12,17 +12,7 @@ import numpy as np
 
 from src.pipeline.train_deep import DeepTrainConfig, run_deep_training_pipeline
 
-logger = logging.getLogger(__name__)
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('tune_bert.log', mode='a')
-    ]
-)
+# Logger will be configured per tuning run
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +25,24 @@ def tune_deep_model(config: DeepTrainConfig) -> Dict[str, Any]:
     Returns:
         Dict with best params and metrics.
     """
+    # Set up logging for this tuning run
+    tuning_dir = Path("experiments/hyperparameter_tuning/bert") / f"{config.fold.replace('_', '')}"
+    tuning_dir.mkdir(parents=True, exist_ok=True)
+    log_file = tuning_dir / "tuning.log"
+    
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:  # Avoid duplicate handlers
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        # Stream handler
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+        # File handler
+        file_handler = logging.FileHandler(log_file, mode='w')  # 'w' to overwrite per run
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    
     logger.info(f"Starting hyperparameter tuning for {config.model_type} on fold {config.fold}")
     
     if config.model_type == "bert":
@@ -85,22 +93,41 @@ def tune_deep_model(config: DeepTrainConfig) -> Dict[str, Any]:
             logger.info("Starting training for current params...")
             results = run_deep_training_pipeline(config)
             logger.info("Training completed successfully")
+            print("DEBUG: Results keys:", list(results.keys()))  # Debug: Check what keys are in results
             
-            # Evaluate on validation or test? For tuning, use test metrics
-            score = results["overall_metrics"]["macro_f1"]  # Use macro F1 as score
-            logger.info(f"Trial {i} score: {score:.4f}")
+            # Compute average score across folds
+            fold_scores = []
+            fold_metrics_list = []
+            for fold_key, fold_data in results.items():
+                if "overall_metrics" in fold_data and "macro_f1" in fold_data["overall_metrics"]:
+                    fold_scores.append(fold_data["overall_metrics"]["macro_f1"])
+                    fold_metrics_list.append(fold_data["overall_metrics"])
+                else:
+                    logger.warning(f"Missing metrics for fold {fold_key}")
             
-            tuning_results.append({
-                "params": params,
-                "metrics": results["overall_metrics"],
-                "score": score,
-            })
-            
-            if score > best_score:
-                best_score = score
-                best_params = params
-                best_metrics = results
-                logger.info(f"New best score: {best_score:.4f} with params: {best_params}")
+            if fold_scores:
+                score = np.mean(fold_scores)  # Average macro F1 across folds
+                logger.info(f"Trial {i} average score across {len(fold_scores)} folds: {score:.4f}")
+                
+                tuning_results.append({
+                    "params": params,
+                    "fold_scores": fold_scores,
+                    "average_metrics": {k: np.mean([m.get(k, 0) for m in fold_metrics_list]) for k in fold_metrics_list[0].keys()},
+                    "score": score,
+                })
+                
+                if score > best_score:
+                    best_score = score
+                    best_params = params
+                    best_metrics = results  # Keep all fold results
+                    logger.info(f"New best average score: {best_score:.4f} with params: {best_params}")
+            else:
+                logger.error(f"Trial {i} failed: No valid fold metrics found")
+                tuning_results.append({
+                    "params": params,
+                    "error": "No valid fold metrics",
+                    "score": None,
+                })
         
         except Exception as e:
             logger.error(f"Trial {i} failed with params {params}: {str(e)}")

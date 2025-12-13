@@ -1,0 +1,21 @@
+experiment_name: tfidf_rf_tuning
+data:
+  raw_path: data/raw/train.csv
+  split_path: data/splits/fold1_seed42.json  # Will be overridden by CLI
+  text_column: comment_text
+  normalized_column: normalized_text
+  label_columns: [toxic, severe_toxic, obscene, threat, insult, identity_hate]
+  cache_dir: data/processed
+model:
+  type: random_forest
+  params:
+    n_estimators: 100
+    max_depth: null
+    min_samples_split: 2
+    min_samples_leaf: 1
+    # Hyperparameter grid for tuning
+    tune_params:
+      n_estimators: [50, 100, 200]
+      max_depth: [null, 10, 20]
+      min_samples_split: [2, 5]
+      min_samples_leaf: [1, 2]

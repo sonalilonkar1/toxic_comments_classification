@@ -15,15 +15,6 @@ import pandas as pd
 import torch
 import yaml
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('train_deep.log', mode='a')
-    ]
-)
 logger = logging.getLogger(__name__)
 
 from src.data.dataset import load_fold_frames
@@ -201,6 +192,16 @@ class DeepTrainConfig:
 def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
     """Execute Deep Learning training pipeline."""
     
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler('train_deep.log', mode='a')
+        ]
+    )
+    
     logger.info(f"Starting deep training pipeline for {config.model_type}")
     logger.info(f"Config: data_path={config.data_path}, output_dir={config.output_dir}, fold={config.fold}")
     
@@ -210,6 +211,7 @@ def run_deep_training_pipeline(config: DeepTrainConfig) -> Dict[str, Any]:
         seed=config.seed,
         data_path=config.data_path,
         splits_dir=config.splits_dir,
+        fold=config.fold,
     )
     label_cols = config.resolve_label_cols(base_df)
     logger.info(f"Loaded data with {len(base_df)} samples, labels: {label_cols}")
@@ -310,11 +312,11 @@ def _train_single_deep_fold(
         bert_params = {
             "model_name": config.bert_params["model_name"],
             "max_length": config.bert_params.get("max_length", 128),
-            "train_batch_size": config.bert_params.get("batch_size", 16),
-            "eval_batch_size": config.bert_params.get("batch_size", 16) * 2,
+            "train_batch_size": config.bert_params.get("train_batch_size", 16),
+            "eval_batch_size": config.bert_params.get("eval_batch_size", 16),
             "learning_rate": config.bert_params.get("learning_rate", 2e-5),
             "weight_decay": 0.01,
-            "num_epochs": config.bert_params.get("epochs", 3),
+            "num_epochs": config.bert_params.get("num_epochs", 3),
             "warmup_ratio": 0.06,
             "gradient_accumulation_steps": 1,
             "fp16": config.bert_params.get("fp16", False),
