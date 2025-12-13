@@ -75,13 +75,54 @@ def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: i
     return ece
 
 
+def compute_fixed_precision_metrics(
+    y_true: np.ndarray,
+    prob_dict: Dict[str, np.ndarray],
+    label_cols: List[str],
+    thresholds: Dict[str, float],
+    target_precision: float,
+) -> Dict[str, float]:
+    """Compute metrics under fixed-precision policy (bound false positives when trust is paramount)."""
+    y_pred_fixed = probs_to_preds(prob_dict, threshold=thresholds)
+    
+    # Overall metrics with fixed-precision thresholds
+    overall_metrics, _ = compute_multilabel_metrics(y_true, y_pred_fixed, label_cols, prob_dict=prob_dict)
+    
+    # Add policy-specific metrics
+    fixed_precision_metrics = {
+        "fixed_precision_policy_micro_f1": overall_metrics["micro_f1"],
+        "fixed_precision_policy_macro_f1": overall_metrics["macro_f1"],
+        "fixed_precision_policy_micro_precision": overall_metrics["micro_precision"],
+        "fixed_precision_policy_micro_recall": overall_metrics["micro_recall"],
+        "fixed_precision_policy_macro_precision": overall_metrics["macro_precision"],
+        "fixed_precision_policy_macro_recall": overall_metrics["macro_recall"],
+        "fixed_precision_target": target_precision,
+        "fixed_precision_total_alerts": int(y_pred_fixed.sum()),
+    }
+    
+    # Per-label precision to verify we achieved target
+    per_label_precisions = []
+    for idx, label in enumerate(label_cols):
+        y_label_true = y_true[:, idx]
+        y_label_pred = y_pred_fixed[:, idx]
+        if y_label_pred.sum() > 0:
+            prec = precision_score(y_label_true, y_label_pred, zero_division=0)
+            per_label_precisions.append(prec)
+    
+    if per_label_precisions:
+        fixed_precision_metrics["fixed_precision_achieved_min"] = float(np.min(per_label_precisions))
+        fixed_precision_metrics["fixed_precision_achieved_mean"] = float(np.mean(per_label_precisions))
+    
+    return fixed_precision_metrics
+
+
 def compute_top_k_metrics(
     y_true: np.ndarray,
     prob_dict: Dict[str, np.ndarray],
     label_cols: List[str],
     k: int,
 ) -> Dict[str, float]:
-    """Simulate a review queue of capacity K."""
+    """Simulate a review queue of capacity K (top-K alerting to respect finite human review capacity)."""
     all_probs = []
     all_true = []
     
@@ -90,7 +131,7 @@ def compute_top_k_metrics(
         true_vals = y_true[:, idx]
         all_probs.extend(probs)
         all_true.extend(true_vals)
-        
+    
     all_probs = np.array(all_probs)
     all_true = np.array(all_true)
     
@@ -104,9 +145,10 @@ def compute_top_k_metrics(
     recall_at_k = np.sum(top_k_true) / total_positives if total_positives > 0 else 0.0
     
     return {
-        f"precision_at_{k}": float(precision_at_k),
-        f"recall_at_{k}": float(recall_at_k),
-        f"hits_at_{k}": int(np.sum(top_k_true)),
+        f"top_k_policy_precision_at_{k}": float(precision_at_k),
+        f"top_k_policy_recall_at_{k}": float(recall_at_k),
+        f"top_k_policy_hits_at_{k}": int(np.sum(top_k_true)),
+        f"top_k_policy_capacity": k,
     }
 
 

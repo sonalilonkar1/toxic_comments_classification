@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.pipeline.train_deep import DeepTrainConfig, run_deep_training_pipeline
 

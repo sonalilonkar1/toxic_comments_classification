@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 from sklearn.metrics import f1_score, roc_auc_score, average_precision_score
 
@@ -172,6 +173,11 @@ def train_lstm_model(
     checkpoint_interval: int = 1,
     loss_type: str = "bce",
     loss_params: Optional[Dict[str, float]] = None,
+    use_class_weights: bool = False,
+    early_stopping_patience: Optional[int] = None,
+    early_stopping_metric: str = "pr_auc",  # "pr_auc" or "f1_macro"
+    lr_scheduler_type: Optional[str] = None,  # "cosine", "plateau", or None
+    lr_scheduler_params: Optional[Dict[str, float]] = None,
 ) -> Tuple[MultiLabelLSTM, LSTMPreprocessor]:
     """
     Train an LSTM model for multi-label classification.
@@ -200,6 +206,8 @@ def train_lstm_model(
         checkpoint_interval: Save checkpoint every N epochs (default: 1, saves every epoch)
         loss_type: 'bce' or 'focal'
         loss_params: Dictionary of parameters for loss function (e.g., {'alpha': 0.25, 'gamma': 2.0})
+        lr_scheduler_type: Type of learning rate scheduler ('cosine', 'plateau', or None)
+        lr_scheduler_params: Parameters for scheduler (e.g., {'T_max': 20} for cosine, {'patience': 3} for plateau)
     
     Returns:
         Tuple of (trained model, preprocessor)
@@ -242,20 +250,67 @@ def train_lstm_model(
     )
     model = model.to(device)
     
+    # Calculate class weights if requested
+    pos_weight = None
+    if use_class_weights:
+        # Calculate positive class weights: n_samples / (n_classes * n_positive_samples_per_class)
+        # This gives higher weight to rare classes
+        pos_counts = y_train.sum(axis=0)
+        n_samples = len(y_train)
+        n_classes = y_train.shape[1]
+        
+        # Avoid division by zero for classes with no positive examples
+        pos_counts = np.maximum(pos_counts, 1)
+        
+        # Weight = (n_samples - pos_count) / pos_count (inverse frequency weighting)
+        # For BCEWithLogitsLoss, pos_weight should be a tensor of shape (num_labels,)
+        pos_weight = torch.tensor(
+            (n_samples - pos_counts) / pos_counts,
+            dtype=torch.float32,
+            device=device
+        )
+        print(f"Using class weights: {pos_weight.cpu().numpy()}")
+        print(f"  (higher weight = rarer class)")
+    
     # Loss and optimizer
     if loss_type == "focal":
         params = loss_params or {}
         criterion = FocalLoss(**params)
         print(f"Using Focal Loss with params: {params}")
     else:
-        criterion = nn.BCEWithLogitsLoss()
+        if pos_weight is not None:
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            print(f"Using Weighted BCE Loss with class weights")
+        else:
+            criterion = nn.BCEWithLogitsLoss()
         
     criterion = criterion.to(device) # Ensure criterion is on device (though usually stateless)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
+    # Learning rate scheduler
+    scheduler = None
+    if lr_scheduler_type == "cosine":
+        params = lr_scheduler_params or {}
+        T_max = params.get("T_max", epochs)
+        scheduler = CosineAnnealingLR(optimizer, T_max=T_max, eta_min=params.get("eta_min", 0))
+        print(f"Using CosineAnnealingLR scheduler (T_max={T_max}, eta_min={params.get('eta_min', 0)})")
+    elif lr_scheduler_type == "plateau":
+        params = lr_scheduler_params or {}
+        scheduler = ReduceLROnPlateau(
+            optimizer,
+            mode='max' if early_stopping_metric == "pr_auc" else 'max',
+            factor=params.get("factor", 0.5),
+            patience=params.get("patience", 3),
+            verbose=True,
+            min_lr=params.get("min_lr", 1e-6)
+        )
+        print(f"Using ReduceLROnPlateau scheduler (factor={params.get('factor', 0.5)}, patience={params.get('patience', 3)})")
+    
     # Resume from checkpoint if provided
     start_epoch = 0
     best_val_f1 = 0.0
+    best_val_pr_auc = 0.0
+    early_stopping_counter = 0
     
     if resume_from and os.path.exists(resume_from):
         print(f"Resuming training from checkpoint: {resume_from}")
@@ -268,11 +323,16 @@ def train_lstm_model(
         if 'optimizer_state_dict' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
+        # Load scheduler state
+        if scheduler and 'scheduler_state_dict' in checkpoint:
+            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        
         # Resume from next epoch
         start_epoch = checkpoint.get('epoch', 0) + 1
         best_val_f1 = checkpoint.get('val_f1', 0.0)
+        best_val_pr_auc = checkpoint.get('val_pr_auc', checkpoint.get('metrics', {}).get('pr_auc', 0.0))
         
-        print(f"Resumed from epoch {start_epoch}, best val F1: {best_val_f1:.4f}")
+        print(f"Resumed from epoch {start_epoch}, best val F1: {best_val_f1:.4f}, best val PR-AUC: {best_val_pr_auc:.4f}")
     
     # Training loop
     os.makedirs(output_dir, exist_ok=True)
@@ -319,22 +379,48 @@ def train_lstm_model(
         
         metrics = compute_metrics(val_labels, val_preds, val_probs)
         val_f1 = metrics["f1_macro"]
+        val_pr_auc = metrics.get("pr_auc", 0.0)
         
+        # Determine which metric to use for early stopping and best model selection
+        if early_stopping_metric == "pr_auc":
+            primary_metric = val_pr_auc
+            best_primary_metric = best_val_pr_auc
+        else:
+            primary_metric = val_f1
+            best_primary_metric = best_val_f1
+        
+        current_lr = optimizer.param_groups[0]['lr']
         print(
             f"Epoch {epoch+1}/{epochs} - "
             f"Train Loss: {train_loss/len(train_loader):.4f} - "
             f"Val Loss: {val_loss/len(val_loader):.4f} - "
-            f"Val F1 Macro: {val_f1:.4f}"
+            f"Val F1 Macro: {val_f1:.4f} - "
+            f"Val PR-AUC: {val_pr_auc:.4f} - "
+            f"LR: {current_lr:.6f}"
         )
         
-        # Save best model
-        if val_f1 > best_val_f1:
+        # Step learning rate scheduler
+        if scheduler:
+            if lr_scheduler_type == "plateau":
+                # ReduceLROnPlateau steps based on validation metric
+                scheduler.step(primary_metric)
+            else:
+                # CosineAnnealingLR steps after each epoch
+                scheduler.step()
+        
+        # Save best model based on primary metric
+        if primary_metric > best_primary_metric:
+            best_primary_metric = primary_metric
             best_val_f1 = val_f1
+            best_val_pr_auc = val_pr_auc
+            early_stopping_counter = 0  # Reset counter on improvement
+            
             best_checkpoint = {
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'val_f1': val_f1,
+                'val_pr_auc': val_pr_auc,
                 'metrics': metrics,
                 'vocab_size': vocab_size,
                 'embedding_dim': embedding_dim,
@@ -344,8 +430,17 @@ def train_lstm_model(
                 'dropout': dropout,
                 'bidirectional': bidirectional,
             }
+            if scheduler:
+                best_checkpoint['scheduler_state_dict'] = scheduler.state_dict()
             torch.save(best_checkpoint, os.path.join(output_dir, 'best_model.pt'))
-            print(f"  -> New best model saved (F1: {val_f1:.4f})")
+            metric_name = "PR-AUC" if early_stopping_metric == "pr_auc" else "F1"
+            print(f"  -> New best model saved ({metric_name}: {primary_metric:.4f})")
+        else:
+            early_stopping_counter += 1
+            if early_stopping_patience and early_stopping_counter >= early_stopping_patience:
+                print(f"\n⏹️  Early stopping triggered! No improvement for {early_stopping_patience} epochs.")
+                print(f"   Best {early_stopping_metric}: {best_primary_metric:.4f} at epoch {epoch - early_stopping_patience + 1}")
+                break
         
         # Save periodic checkpoint
         if (epoch + 1) % checkpoint_interval == 0 or epoch == epochs - 1:
@@ -366,6 +461,8 @@ def train_lstm_model(
                 'dropout': dropout,
                 'bidirectional': bidirectional,
             }
+            if scheduler:
+                checkpoint['scheduler_state_dict'] = scheduler.state_dict()
             torch.save(checkpoint, checkpoint_path)
             print(f"  -> Checkpoint saved: {checkpoint_path}")
     
