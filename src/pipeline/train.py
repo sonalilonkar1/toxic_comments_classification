@@ -434,7 +434,7 @@ def _train_single_fold(
 def _prepare_fold_dir(base_dir: Path, fold_name: str, config: TrainConfig) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     dir_name = (
-        f"{fold_name}-seed{config.seed}-norm{config.normalization}-"
+        f"{fold_name}-norm{config.normalization}-"
         f"model{config.model_type}-{timestamp}"
     )
     fold_dir = base_dir / dir_name

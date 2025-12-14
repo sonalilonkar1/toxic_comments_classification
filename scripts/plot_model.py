@@ -34,20 +34,26 @@ def load_model_metrics(experiments_dir: Path, model_name: str) -> Dict:
     """Load summary metrics for a model across all folds."""
     model_dir = experiments_dir / model_name
     
-    # Special handling for naive_bayes (results are in tfidf_logreg directory)
-    if model_name == "naive_bayes":
-        summary_path = experiments_dir / "tfidf_logreg" / "naive_bayes_summary_metrics.json"
-        if not summary_path.exists():
-            # Try to create it from individual fold results
-            return {}
+    summary_path = model_dir / "summary_metrics.json"
+    if summary_path.exists():
+        # For TF-IDF models, summary is at model level
+        with open(summary_path, "r") as f:
+            summary = json.load(f)
     else:
-        summary_path = model_dir / "summary_metrics.json"
+        # For BERT, load from each fold's summary_metrics.json
+        summary = {}
+        for fold_dir in sorted(model_dir.iterdir()):
+            if fold_dir.is_dir():
+                fold_summary_path = fold_dir / "summary_metrics.json"
+                if fold_summary_path.exists():
+                    with open(fold_summary_path, "r") as f:
+                        fold_summary = json.load(f)
+                    # fold_summary is {fold_name: metrics}, but since it's per fold, take the value
+                    fold_name = list(fold_summary.keys())[0]
+                    summary[fold_name] = fold_summary[fold_name]
     
-    if not summary_path.exists():
+    if not summary:
         return {}
-    
-    with open(summary_path, "r") as f:
-        summary = json.load(f)
     
     # Aggregate across folds
     metrics = {}
@@ -441,7 +447,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate visualizations for a specific model")
     parser.add_argument("--model", type=str, required=True,
                        help="Model name (e.g., lstm, naive_bayes, logistic)")
-    parser.add_argument("--experiments-dir", type=Path, default=Path("experiments"),
+    parser.add_argument("--experiments-dir", type=Path, default=Path("experiments/train"),
                        help="Directory containing experiment results")
     parser.add_argument("--output-dir", type=Path, default=Path("results"),
                        help="Output directory for plots")
@@ -476,10 +482,6 @@ def main():
         model_dir = args.experiments_dir / model_name
         if not model_dir.exists():
             print(f"❌ Model directory not found: {model_dir}")
-            return
-        summary_path = model_dir / "summary_metrics.json"
-        if not summary_path.exists():
-            print(f"❌ summary_metrics.json not found for {model_name}")
             return
     
     # Create output directory with model subfolder

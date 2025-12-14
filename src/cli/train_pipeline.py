@@ -426,7 +426,28 @@ def main() -> None:
                     # Apply BERT overrides
                     if args.bert_model_name is not None:
                         config.bert_params["model_name"] = args.bert_model_name
-                    # ... other bert params
+                    if args.bert_max_length is not None:
+                        config.bert_params["max_length"] = args.bert_max_length
+                    if args.bert_train_batch_size is not None:
+                        config.bert_params["batch_size"] = args.bert_train_batch_size
+                    if args.bert_eval_batch_size is not None:
+                        config.bert_params["eval_batch_size"] = args.bert_eval_batch_size
+                    if args.bert_learning_rate is not None:
+                        config.bert_params["learning_rate"] = args.bert_learning_rate
+                    if args.bert_weight_decay is not None:
+                        config.bert_params["weight_decay"] = args.bert_weight_decay
+                    if args.bert_num_epochs is not None:
+                        config.bert_params["num_epochs"] = args.bert_num_epochs
+                    if args.bert_warmup_ratio is not None:
+                        config.bert_params["warmup_ratio"] = args.bert_warmup_ratio
+                    if args.bert_gradient_accumulation is not None:
+                        config.bert_params["gradient_accumulation_steps"] = args.bert_gradient_accumulation
+                    if args.bert_fp16:
+                        config.bert_params["fp16"] = True
+                    if args.bert_logging_steps is not None:
+                        config.bert_params["logging_steps"] = args.bert_logging_steps
+                    if args.bert_save_total_limit is not None:
+                        config.bert_params["save_total_limit"] = args.bert_save_total_limit
                     
                     if args.tune:
                         # Implement tuning for deep models

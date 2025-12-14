@@ -317,13 +317,13 @@ def _train_single_deep_fold(
     # Train Model
     if config.model_type == "bert":
         logger.info(f"Training BERT model: {config.bert_params['model_name']}")
-        logger.info(f"BERT params: lr={config.bert_params['learning_rate']}, batch_size={config.bert_params['train_batch_size']}, epochs={config.bert_params['num_epochs']}")
+        logger.info(f"BERT params: lr={config.bert_params['learning_rate']}, batch_size={config.bert_params['batch_size']}, epochs={config.bert_params['num_epochs']}")
         
         # Prepare params dict for the function
         bert_params = {
             "model_name": config.bert_params["model_name"],
             "max_length": config.bert_params.get("max_length", 128),
-            "train_batch_size": config.bert_params.get("train_batch_size", 16),
+            "train_batch_size": config.bert_params.get("batch_size", 16),
             "eval_batch_size": config.bert_params.get("eval_batch_size", 16),
             "learning_rate": config.bert_params.get("learning_rate", 2e-5),
             "weight_decay": 0.01,
