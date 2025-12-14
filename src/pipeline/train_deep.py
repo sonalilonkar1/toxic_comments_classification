@@ -38,6 +38,7 @@ from src.utils.metrics import (
     compute_fairness_slices,
     compute_multilabel_metrics,
     compute_top_k_metrics,
+    compute_fixed_precision_metrics,
     find_precision_thresholds,
     probs_to_preds,
 )
@@ -75,6 +76,11 @@ DEFAULT_LSTM_PARAMS: Dict[str, Any] = {
     "freeze_embeddings": False,
     "resume_from": None,  # Path to checkpoint to resume from
     "checkpoint_interval": 1,  # Save checkpoint every N epochs
+    "use_class_weights": False,  # Use class weights for imbalanced labels
+    "early_stopping_patience": None,  # Early stopping patience (None = disabled)
+    "early_stopping_metric": "pr_auc",  # Metric for early stopping: "pr_auc" or "f1_macro"
+    "lr_scheduler_type": None,  # Learning rate scheduler: "cosine", "plateau", or None
+    "lr_scheduler_params": None,  # Parameters for scheduler (e.g., {"T_max": 20} for cosine, {"patience": 3} for plateau)
 }
 
 @dataclass
@@ -177,6 +183,11 @@ class DeepTrainConfig:
                     "freeze_embeddings": lstm_config.get("freeze_embeddings", self.lstm_params.get("freeze_embeddings", False)),
                     "resume_from": lstm_config.get("resume_from", self.lstm_params.get("resume_from")),
                     "checkpoint_interval": lstm_config.get("checkpoint_interval", self.lstm_params.get("checkpoint_interval", 1)),
+                    "use_class_weights": lstm_config.get("use_class_weights", self.lstm_params.get("use_class_weights", False)),
+                    "early_stopping_patience": lstm_config.get("early_stopping_patience", self.lstm_params.get("early_stopping_patience", None)),
+                    "early_stopping_metric": lstm_config.get("early_stopping_metric", self.lstm_params.get("early_stopping_metric", "pr_auc")),
+                    "lr_scheduler_type": lstm_config.get("lr_scheduler_type", self.lstm_params.get("lr_scheduler_type", None)),
+                    "lr_scheduler_params": lstm_config.get("lr_scheduler_params", self.lstm_params.get("lr_scheduler_params", None)),
                 })
 
     def resolve_label_cols(self, df: pd.DataFrame) -> List[str]:
@@ -383,8 +394,10 @@ def _train_single_deep_fold(
             if embedding_path.suffix == ".txt" or "glove" in embedding_path.name.lower():
                 # Assume GloVe format
                 embedding_dim = config.lstm_params.get("embedding_dim", 128)
+                # Use the actual vocab_size from preprocessor to match model initialization
+                actual_vocab_size = preprocessor.get_vocab_size()
                 embedding_matrix = load_glove_embeddings(
-                    embedding_path, word_index, embedding_dim=embedding_dim
+                    embedding_path, word_index, embedding_dim=embedding_dim, vocab_size=actual_vocab_size
                 )
             elif "word2vec" in embedding_path.name.lower() or embedding_path.suffix in [".bin", ".model"]:
                 # Assume Word2Vec format
@@ -422,6 +435,11 @@ def _train_single_deep_fold(
             checkpoint_interval=config.lstm_params.get("checkpoint_interval", 1),
             loss_type=config.loss_type,
             loss_params=config.loss_params,
+            use_class_weights=config.lstm_params.get("use_class_weights", False),
+            early_stopping_patience=config.lstm_params.get("early_stopping_patience", None),
+            early_stopping_metric=config.lstm_params.get("early_stopping_metric", "pr_auc"),
+            lr_scheduler_type=config.lstm_params.get("lr_scheduler_type", None),
+            lr_scheduler_params=config.lstm_params.get("lr_scheduler_params", None),
         )
         
         # Save preprocessor (tokenizer) and model
@@ -513,8 +531,16 @@ def _train_single_deep_fold(
     overall_metrics["latency_seconds_per_1k"] = latency_per_1k
     overall_metrics["inference_time_total"] = latency_sec
     
+    # Top-K alerting policy metrics (respect finite human review capacity)
     top_k_metrics = compute_top_k_metrics(y_test, test_probs, label_cols, k=config.top_k)
     overall_metrics.update(top_k_metrics)
+    
+    # Fixed-precision policy metrics (bound false positives when trust is paramount)
+    if config.target_precision:
+        fixed_precision_metrics = compute_fixed_precision_metrics(
+            y_test, test_probs, label_cols, thresholds, config.target_precision
+        )
+        overall_metrics.update(fixed_precision_metrics)
     
     logger.info(f"Overall metrics: {overall_metrics}")
     

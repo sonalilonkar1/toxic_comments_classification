@@ -1,24 +1,36 @@
 version: 1
 # LSTM hyperparameters for multi-label toxic comment classification
-# Best parameters from tuning: config1_small (hidden_dim=64, max_length=128, num_layers=1)
+# Best parameters from comprehensive tuning: config_011_improved
+# Achieved PR-AUC: 0.5798 (best performance)
+# Configuration: hidden_dim=256, max_length=200, num_layers=2, lr=0.0005, dropout=0.4
+# Improvements: class weighting + early stopping (NO learning rate scheduling)
 
 # Preprocessing parameters
 vocab_size: 10000          # Maximum vocabulary size (most frequent words)
-max_length: 128            # Maximum sequence length (tokens) - BEST FROM TUNING
+max_length: 200            # Maximum sequence length (tokens) - BEST FROM TUNING
 
 # Model architecture
 embedding_dim: 128          # Word embedding dimension
-hidden_dim: 64             # LSTM hidden dimension - BEST FROM TUNING
-num_layers: 1              # Number of LSTM layers - BEST FROM TUNING
-dropout: 0.3               # Dropout rate
+hidden_dim: 256             # LSTM hidden dimension - BEST FROM TUNING
+num_layers: 2               # Number of LSTM layers - BEST FROM TUNING
+dropout: 0.4                # Dropout rate - BEST FROM TUNING
 bidirectional: true         # Use bidirectional LSTM
 
 # Training parameters
 batch_size: 32             # Training batch size
-epochs: 10                 # Number of training epochs
-learning_rate: 0.001       # Learning rate (Adam optimizer)
+epochs: 20                  # Maximum number of training epochs (early stopping may stop earlier)
+learning_rate: 0.0005       # Learning rate (Adam optimizer) - BEST FROM TUNING
 
-# Pre-trained embeddings (optional)
+# Class weighting and early stopping (IMPROVEMENTS)
+use_class_weights: true     # Use class weights for imbalanced labels (IMPROVEMENT)
+early_stopping_patience: 5  # Early stopping patience (epochs) - stops if no improvement
+early_stopping_metric: "pr_auc"  # Metric to monitor for early stopping: "pr_auc" or "f1_macro"
+
+# Learning rate scheduling (NOT USED in best config - reduced PR-AUC)
+lr_scheduler_type: null     # Learning rate scheduler: "cosine", "plateau", or null (null = fixed LR)
+lr_scheduler_params: null   # Scheduler parameters (e.g., {"T_max": 20, "eta_min": 1e-6} for cosine)
+
+# Pre-trained embeddings (optional - tested but did not improve performance)
 embedding_path: null       # Path to pre-trained embeddings (GloVe/Word2Vec)
                            # Examples:
                            #   - "data/embeddings/glove.6B.100d.txt"
@@ -34,6 +46,5 @@ checkpoint_interval: 1     # Save checkpoint every N epochs (1 = every epoch, 5 
 tuning_vocab_sizes: [5000, 10000, 20000]
 tuning_max_lengths: [100, 200, 300]
 tuning_hidden_dims: [64, 128, 256]
-tuning_learning_rates: [0.0001, 0.001, 0.01]
+tuning_learning_rates: [0.0001, 0.0005, 0.001, 0.01]
 tuning_dropouts: [0.2, 0.3, 0.4, 0.5]
-

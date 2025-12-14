@@ -227,6 +227,7 @@ def load_glove_embeddings(
     filepath: Union[str, Path],
     word_index: Dict[str, int],
     embedding_dim: int = 100,
+    vocab_size: Optional[int] = None,
 ) -> np.ndarray:
     """
     Load pre-trained GloVe embeddings and create embedding matrix.
@@ -235,6 +236,7 @@ def load_glove_embeddings(
         filepath: Path to GloVe embeddings file (e.g., glove.6B.100d.txt)
         word_index: Word to index mapping from tokenizer
         embedding_dim: Dimension of embeddings (100, 200, or 300)
+        vocab_size: Maximum vocabulary size to use (if None, uses len(word_index) + 2)
     
     Returns:
         Embedding matrix of shape (vocab_size, embedding_dim)
@@ -243,7 +245,11 @@ def load_glove_embeddings(
     if not filepath.exists():
         raise FileNotFoundError(f"GloVe file not found: {filepath}")
     
-    vocab_size = len(word_index) + 2  # +1 for OOV, +1 for padding (index 0)
+    if vocab_size is None:
+        vocab_size = len(word_index) + 2  # +1 for OOV, +1 for padding (index 0)
+    else:
+        # Ensure vocab_size doesn't exceed actual vocabulary
+        vocab_size = min(vocab_size, len(word_index) + 2)
     embeddings_index: Dict[str, np.ndarray] = {}
     
     print(f"Loading GloVe embeddings from {filepath}...")
