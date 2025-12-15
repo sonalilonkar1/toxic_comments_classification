@@ -1,0 +1,21 @@
+comment_text,toxic_prob,toxic_pred,toxic,severe_toxic_prob,severe_toxic_pred,severe_toxic,obscene_prob,obscene_pred,obscene,threat_prob,threat_pred,threat,insult_prob,insult_pred,insult,identity_hate_prob,identity_hate_pred,identity_hate
+"This is straight up trash, get rekt noob",0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,1,0.8,1,1,0.8,1,0
+"You're such a boomer, living in the past lol",0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0
+"Karen moment, absolutely cancelled",0.8,1,1,0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,1,0.8,1,1
+Ratio + L + ratio + cope harder,0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0
+"Based take, but you're still cringe",0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0
+"This is peak fiction, total gigachad energy",0.1,0,1,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,1,0.1,0,0
+"You're so mid, it's actually impressive",0.1,0,1,0.1,0,1,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+"Bet you still use Internet Explorer, grandpa",0.1,0,1,0.1,0,0,0.1,0,0,0.1,0,1,0.1,0,0,0.1,0,0
+"This opinion is sus, very sus",0.8,1,1,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0,0.8,1,0
+Yeet this take into the void,0.8,1,1,0.8,1,1,0.8,1,0,0.8,1,1,0.8,1,1,0.8,1,0
+"This is a great tutorial, very helpful!",0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+I appreciate the detailed explanation,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+Thanks for sharing this information,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+This community is so supportive,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+"Great discussion, learned a lot today",0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+"Very informative post, thank you",0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+This is exactly what I was looking for,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+Well written and easy to understand,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+Thanks for the clear instructions,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0
+This helped me solve my problem,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0,0.1,0,0

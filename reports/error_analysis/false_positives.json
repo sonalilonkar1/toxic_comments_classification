@@ -1,0 +1,179 @@
+{
+  "toxic": {
+    "count": 262,
+    "avg_confidence": 0.8716002204580152,
+    "max_confidence": 0.9974579,
+    "common_words": {
+      "the": 514,
+      "you": 484,
+      "to": 428,
+      "i": 373,
+      "and": 336,
+      "a": 325,
+      "of": 272,
+      "is": 209,
+      "that": 206,
+      "it": 204,
+      "in": 174,
+      "your": 143,
+      "t": 140,
+      "are": 130,
+      "s": 127,
+      "not": 127,
+      "this": 126,
+      "have": 124,
+      "on": 121,
+      "my": 119
+    },
+    "sample_comments": [
+      "Go ahead, call your friend rather than take 30 seconds to say WHAT you object to in the content. Classic abusive admin shithead behavior.",
+      "BTW, there's this dipshit (his name is LILVOKA) who keeps on deleting the article saying that I didn't cite my sources (which is a complete lie).  He pretty much admitted to me that he doens't LIKE what I posted so therefore that's grounds for deletion.  I thought you weren't supposed to interject you POV into how you correct or type articles.",
+      "I think its a great idea - an bigD sounds like an asshole",
+      "\"\nI beg to differ. His edit summary clearly says \"\"YOU\"\" shut up (that's addressing me directly). \"",
+      "I, J Freeman am a homosexual"
+    ]
+  },
+  "severe_toxic": {
+    "count": 20,
+    "avg_confidence": 0.6880613105,
+    "max_confidence": 0.74682266,
+    "common_words": {
+      "a": 86,
+      "is": 83,
+      "you": 82,
+      "fuck": 80,
+      "fuckingabf": 74,
+      "misterwiki": 39,
+      "fucking": 30,
+      "and": 15,
+      "i": 14,
+      "the": 13,
+      "my": 11,
+      "shit": 11,
+      "s": 10,
+      "your": 9,
+      "to": 9,
+      "ass": 9,
+      "t": 7,
+      "in": 7,
+      "right": 7,
+      "of": 6
+    },
+    "sample_comments": [
+      "ABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKINGABF IS A FUCKING",
+      "fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck fuck",
+      "what the hell!!!! \n\nwhat the hell is your fucking problem? i am going to sue the fucking pants off of you for dicrimination against a minority you mother fucking asshole!!!! i will kill you the next time you try anything. go ahead block my account, i don't give a shit!!!! you really think that Wikipedia is my life? i'm not a no life loser =like you.",
+      "FUCK YOU FUCK YOU FUCK YOU ASSHOLES, THIS IS BULLSHIT!!",
+      "fuck \n\nyou fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki.   you fuck misterwiki. [[User:MisterWiki's F|MisterWiki's"
+    ]
+  },
+  "obscene": {
+    "count": 146,
+    "avg_confidence": 0.890374399520548,
+    "max_confidence": 0.98425657,
+    "common_words": {
+      "faggot": 718,
+      "you": 613,
+      "a": 512,
+      "i": 401,
+      "is": 296,
+      "to": 246,
+      "the": 244,
+      "and": 241,
+      "are": 194,
+      "nigger": 184,
+      "j": 179,
+      "delanoy": 179,
+      "of": 173,
+      "anthony": 172,
+      "bradbury": 172,
+      "shit": 166,
+      "do": 146,
+      "my": 139,
+      "because": 128,
+      "it": 120
+    },
+    "sample_comments": [
+      "Hey you fag!! \n\nleave the english Wikipedia alone you german retarded bastard!!! All of you german admins can't follow the rules and it is official: U SUCK!!!",
+      "Hey, stop it!\nPlease stop changing nu metal to alternative metal it is a fact that they are nu metal, Dalkaen (or should I say Mr. Fucking Wanker?) and you have the wrong information! Get a life.",
+      "WHy DO U SMELL LIKE PENIS",
+      "then you leave my shit alone ok. i cnat stop you from messign with my skyview page, but dont you dare tocuh my user page or profile again, do you understand me?",
+      "I really couldn't give a rat's arse."
+    ]
+  },
+  "threat": {
+    "count": 0,
+    "avg_confidence": 0,
+    "max_confidence": 0,
+    "common_words": {},
+    "sample_comments": []
+  },
+  "insult": {
+    "count": 98,
+    "avg_confidence": 0.9175939249999999,
+    "max_confidence": 0.97112143,
+    "common_words": {
+      "you": 791,
+      "fuck": 594,
+      "nigger": 310,
+      "a": 289,
+      "is": 223,
+      "j": 179,
+      "delanoy": 179,
+      "and": 116,
+      "i": 104,
+      "the": 102,
+      "to": 83,
+      "of": 71,
+      "your": 60,
+      "are": 50,
+      "my": 45,
+      "it": 40,
+      "that": 40,
+      "misterwiki": 39,
+      "long": 35,
+      "t": 32
+    },
+    "sample_comments": [
+      "Hey you fag!! \n\nleave the english Wikipedia alone you german retarded bastard!!! All of you german admins can't follow the rules and it is official: U SUCK!!!",
+      "you bitch why didn't you block kew gardens he also went past the 3 revert fucking rule god man",
+      "STOP PUTTING BACK THINGS THAT I ALREADY REMOVED FROM MY OWN TALK PAGE! THIS IS THE REASON WHY YOUR SYSOP APPLICATION HAS NEVER BEEN APPROVED AND WILL NEVER BE APPROVED! YOU ARE ONE SICK FUCK! GROW UP AND QUIT BEING A NUISANCE! MIND YOUR OWN BUSINESS! YOU ARE NOT A SYSOP! ==",
+      "You can fuck off too, you Twatus Majorus.",
+      "YOU'RE A SAD ARSEHOLE. GET A LIFE."
+    ]
+  },
+  "identity_hate": {
+    "count": 12,
+    "avg_confidence": 0.8575175183333333,
+    "max_confidence": 0.922006,
+    "common_words": {
+      "a": 185,
+      "is": 183,
+      "nigger": 181,
+      "j": 179,
+      "delanoy": 179,
+      "you": 32,
+      "and": 29,
+      "to": 16,
+      "your": 15,
+      "the": 15,
+      "i": 14,
+      "are": 8,
+      "no": 8,
+      "of": 8,
+      "in": 6,
+      "gay": 5,
+      "own": 5,
+      "that": 5,
+      "fucking": 5,
+      "all": 4
+    },
+    "sample_comments": [
+      "Your mom plays gay music.. linkin park is the shit mutha fucka!!!",
+      "Stop\n\nStpo vandalising you dirty gay probablay",
+      "you are gay fucken retards",
+      "YOU GUYS ARE FUCKIN CRAZY YOU STUPID SHIT LICK YOUR OWN PIMPLY FAT UGLY BUM!!!! YOU ARE CRAZY YOU ALL GAYS AND FAGGOTS IF NOT MALE THAN LESBIAN I KNOW YOU GONNA DELETE ME OR DO YOUR STUPID BLOCK THING TO ME NOW BUT I DON'T CARE YOU ARE SINGLE AND HAVE THE WEIRDEST BOOBS OKAY I HATE YOU BITCHES!",
+      "J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER ==== J.delanoy IS  A NIGGER == J.delanoy IS"
+    ]
+  }
+}

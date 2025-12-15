@@ -1,0 +1,29 @@
+{
+  "true_labels": {
+    "single_label": 1287,
+    "multi_label": 1969,
+    "no_labels": 28659
+  },
+  "predicted_labels": {
+    "single_label": 1117,
+    "multi_label": 1498,
+    "no_labels": 29300
+  },
+  "cooccurrence": {
+    "toxic_severe_toxic": 355,
+    "toxic_obscene": 1566,
+    "toxic_threat": 94,
+    "toxic_insult": 1444,
+    "toxic_identity_hate": 258,
+    "severe_toxic_obscene": 333,
+    "severe_toxic_threat": 23,
+    "severe_toxic_insult": 299,
+    "severe_toxic_identity_hate": 70,
+    "obscene_threat": 61,
+    "obscene_insult": 1207,
+    "obscene_identity_hate": 192,
+    "threat_insult": 59,
+    "threat_identity_hate": 19,
+    "insult_identity_hate": 215
+  }
+}

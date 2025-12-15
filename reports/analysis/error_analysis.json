@@ -1,0 +1,154 @@
+{
+  "tfidf_logistic": {
+    "toxic": {
+      "false_positives": 193,
+      "false_negatives": 1016,
+      "total_positives": 3125,
+      "total_predictions": 31915
+    },
+    "severe_toxic": {
+      "false_positives": 69,
+      "false_negatives": 237,
+      "total_positives": 330,
+      "total_predictions": 31915
+    },
+    "obscene": {
+      "false_positives": 100,
+      "false_negatives": 626,
+      "total_positives": 1733,
+      "total_predictions": 31915
+    },
+    "threat": {
+      "false_positives": 1,
+      "false_negatives": 78,
+      "total_positives": 82,
+      "total_predictions": 31915
+    },
+    "insult": {
+      "false_positives": 59,
+      "false_negatives": 1102,
+      "total_positives": 1624,
+      "total_predictions": 31915
+    },
+    "identity_hate": {
+      "false_positives": 7,
+      "false_negatives": 268,
+      "total_positives": 293,
+      "total_predictions": 31915
+    }
+  },
+  "tfidf_svm": {
+    "toxic": {
+      "false_positives": 203,
+      "false_negatives": 1024,
+      "total_positives": 3125,
+      "total_predictions": 31915
+    },
+    "severe_toxic": {
+      "false_positives": 72,
+      "false_negatives": 243,
+      "total_positives": 330,
+      "total_predictions": 31915
+    },
+    "obscene": {
+      "false_positives": 110,
+      "false_negatives": 601,
+      "total_positives": 1733,
+      "total_predictions": 31915
+    },
+    "threat": {
+      "false_positives": 0,
+      "false_negatives": 79,
+      "total_positives": 82,
+      "total_predictions": 31915
+    },
+    "insult": {
+      "false_positives": 80,
+      "false_negatives": 1043,
+      "total_positives": 1624,
+      "total_predictions": 31915
+    },
+    "identity_hate": {
+      "false_positives": 8,
+      "false_negatives": 268,
+      "total_positives": 293,
+      "total_predictions": 31915
+    }
+  },
+  "tfidf_random_forest": {
+    "toxic": {
+      "false_positives": 161,
+      "false_negatives": 1536,
+      "total_positives": 3125,
+      "total_predictions": 31915
+    },
+    "severe_toxic": {
+      "false_positives": 0,
+      "false_negatives": 326,
+      "total_positives": 330,
+      "total_predictions": 31915
+    },
+    "obscene": {
+      "false_positives": 87,
+      "false_negatives": 666,
+      "total_positives": 1733,
+      "total_predictions": 31915
+    },
+    "threat": {
+      "false_positives": 0,
+      "false_negatives": 82,
+      "total_positives": 82,
+      "total_predictions": 31915
+    },
+    "insult": {
+      "false_positives": 35,
+      "false_negatives": 1287,
+      "total_positives": 1624,
+      "total_predictions": 31915
+    },
+    "identity_hate": {
+      "false_positives": 0,
+      "false_negatives": 293,
+      "total_positives": 293,
+      "total_predictions": 31915
+    }
+  },
+  "bert": {
+    "toxic": {
+      "false_positives": 262,
+      "false_negatives": 718,
+      "total_positives": 3071,
+      "total_predictions": 31915
+    },
+    "severe_toxic": {
+      "false_positives": 20,
+      "false_negatives": 307,
+      "total_positives": 355,
+      "total_predictions": 31915
+    },
+    "obscene": {
+      "false_positives": 146,
+      "false_negatives": 372,
+      "total_positives": 1660,
+      "total_predictions": 31915
+    },
+    "threat": {
+      "false_positives": 0,
+      "false_negatives": 99,
+      "total_positives": 102,
+      "total_predictions": 31915
+    },
+    "insult": {
+      "false_positives": 98,
+      "false_negatives": 800,
+      "total_positives": 1556,
+      "total_predictions": 31915
+    },
+    "identity_hate": {
+      "false_positives": 12,
+      "false_negatives": 239,
+      "total_positives": 279,
+      "total_predictions": 31915
+    }
+  }
+}
