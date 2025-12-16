@@ -23,7 +23,9 @@
     "identity_hate_auc": 0.9814602871850354,
     "identity_hate_precision": 0.78125,
     "identity_hate_recall": 0.08532423208191127,
-    "identity_hate_f1": 0.15384615384615385
+    "identity_hate_f1": 0.15384615384615385,
+    "macro_pr_auc": 0.6572894459705575,
+    "macro_roc_auc": 0.9830273341518772
   },
   "tfidf_svm": {
     "toxic_auc": 0.9771766530045156,
@@ -49,7 +51,9 @@
     "identity_hate_auc": 0.9767947877476757,
     "identity_hate_precision": 0.7575757575757576,
     "identity_hate_recall": 0.08532423208191127,
-    "identity_hate_f1": 0.15337423312883436
+    "identity_hate_f1": 0.15337423312883436,
+    "macro_pr_auc": 0.6468956687651741,
+    "macro_roc_auc": 0.9798230124957411
   },
   "tfidf_random_forest": {
     "toxic_auc": 0.9595183660993399,
@@ -75,7 +79,9 @@
     "identity_hate_auc": 0.9652263415348065,
     "identity_hate_precision": 0.0,
     "identity_hate_recall": 0.0,
-    "identity_hate_f1": 0.0
+    "identity_hate_f1": 0.0,
+    "macro_pr_auc": 0.581307856729712,
+    "macro_roc_auc": 0.9677154651823359
   },
   "bert": {
     "toxic_auc": 0.9881396319554303,
@@ -101,6 +107,8 @@
     "identity_hate_auc": 0.9884822245515862,
     "identity_hate_precision": 0.7692307692307693,
     "identity_hate_recall": 0.14336917562724014,
-    "identity_hate_f1": 0.24169184290030213
+    "identity_hate_f1": 0.24169184290030213,
+    "macro_pr_auc": 0.7272839229006748,
+    "macro_roc_auc": 0.9906364970222151
   }
 }

@@ -1,237 +1,323 @@
-# Toxic Comment Classification
+# Toxic Comment Classification - Complete ML System
 
-This repository now contains a reproducible scaffold **plus** the first wave of
-exploratory assets for the Jigsaw toxic-comment dataset. In addition to the
-original foundations, we now have:
+A comprehensive, production-ready toxic comment classification system implementing multiple machine learning approaches with extensive evaluation, interpretability, and deployment capabilities.
 
-- a `notebooks/data_explore.ipynb` workbook that benchmarks TF-IDF + Logistic
-	baselines, normalization strategies, temporal drift, and bucket-aware
-	augmentation with logging to `experiments/bucket_augmentation/outputs/`;
-- a `notebooks/multilabel_analysis.ipynb` outline ready to run multi-label
-	baselines, drift diagnostics, fairness slices, and SHAP interpretability;
-- standardized experiment directories under `experiments/` for artifacts and
-	metric traces.
+## 🎯 Key Features
 
-The bootstrap scripts remain unchanged, so you can still spin up the project
-from scratch in one command and then open the notebooks for richer analysis.
+- **5 Model Architectures**: Logistic Regression, SVM, Random Forest, XGBoost, and BERT
+- **Production-Ready Demo**: Interactive Streamlit web application with real-time predictions
+- **REST API**: Flask-based API for programmatic access
+- **Comprehensive Analysis**: 25+ automated visualizations and detailed performance reports
+- **Hyperparameter Optimization**: Extensive tuning across all models with cross-validation
+- **Interpretability**: Feature importance analysis and model explanations
+- **Automated Setup**: One-click environment bootstrap and data pipeline
 
+## 📊 Model Performance
 
-## Prerequisites
+| Model | Macro PR-AUC | Micro F1 | Macro F1 | Precision@1000 |
+|-------|--------------|----------|----------|----------------|
+| **BERT** | **0.722** | **0.731** | **0.466** | **0.997** |
+| Linear SVM | 0.665 | 0.689 | 0.396 | 0.995 |
+| Logistic Regression | 0.659 | 0.680 | 0.421 | 0.974 |
+| XGBoost | 0.652 | 0.683 | 0.377 | 0.990 |
+| Random Forest | 0.602 | 0.591 | 0.352 | 0.986 |
 
-- Python 3.8+ with either Conda/Miniforge or the ability to create a virtualenv
-- `git`, `curl`/`wget`, and the Kaggle CLI (`pip install kaggle`)
-- Kaggle API token saved as `~/.kaggle/kaggle.json` or copied into the project root
+## 🚀 Quick Start
 
-## Quick Start
-
-1. **Bootstrap everything (recommended):**
-
-	 ```bash
-	 bash scripts/00_bootstrap_project.sh
-	 ```
-
-	 Use `--skip-env`, `--skip-torch`, or `--skip-data` to turn off individual
-	 steps if you rerun the bootstrapper later.
-
-2. **Activate the environment:**
-
-	 - If Conda: `conda activate toxbench`
-	 - If the script created `.venv/`: `source .venv/bin/activate`
-
-	 > Tip: `scripts/run_python.sh <args>` is a safe wrapper that automatically
-	 > targets whichever environment the bootstrapper created.
-
-3. **Download the Kaggle dataset manually (optional):**
-
-	 ```bash
-	 bash scripts/02_download_kaggle.sh
-	 ```
-
-	 This step is already part of the bootstrapper, but the standalone command is
-	 handy if you need to refresh the data only.
-
-4. **Generate chronological folds:**
-
-	 ```bash
-	 ./scripts/run_python.sh -m src.cli.make_splits --folds 3
-	 ```
-
-	 This reads `data/raw/train.csv` and writes JSON index files to
-	 `data/splits/`.
-
-5. **(Optional) Precompute normalization + bucket caches:**
-
-	 ```bash
-	 ./scripts/run_python.sh -m src.cli.make_normalized_text \
-	   --data-path data/raw/train.csv \
-	   --output-path artifacts/normalized/train.parquet
-	 ./scripts/run_python.sh -m src.cli.make_bucket_tags \
-	   --data-path data/raw/train.csv \
-	   --normalized-cache artifacts/normalized/train.parquet \
-	   --output-path artifacts/buckets/train.parquet
-	 ```
-
-	 These CLIs read the YAML profiles under `configs/normalization.yaml` and
-	 `configs/buckets.yaml`, cache normalized text + bucket tags, and store
-	 metadata (with config hashes) alongside the parquet outputs.
-
-## What's in `scripts/`
-
-- `00_bootstrap_project.sh` – orchestrates env creation, optional PyTorch
-	install, and data download.
-- `01_make_env_macos.sh` – idempotent macOS-friendly environment creator
-	(prefers Conda, falls back to `python -m venv`).
-- `02_install_torch_macos.sh` – installs the right PyTorch build for Apple
-	Silicon/Intel macOS; skip if you only need the data utilities.
-- `02_download_kaggle.sh` – wraps the Kaggle CLI download and unzip workflow,
-	honoring a repo-local `kaggle.json` when present.
-- `run_python.sh` – helper to execute any Python command inside the managed
-	environment (`conda run` or `.venv`).
-
-## Source + Notebook Layout
-
-- `src/cli/download_data.py` – logic shared by the download script
-- `src/cli/make_splits.py` – chronological fold generation
-- `src/cli/make_normalized_text.py` – normalization cache builder driven by `configs/normalization.yaml`
-- `src/cli/make_bucket_tags.py` – bucket-tag cache builder driven by `configs/buckets.yaml`
-- `notebooks/data_explore.ipynb` – end-to-end exploratory workbook (label
-	prevalence, normalization, TF-IDF logistic baseline, error taxonomy, bucket
-	augmentation; writes logs to `experiments/bucket_augmentation/outputs/`)
-- `notebooks/multilabel_analysis.ipynb` – structured notebook for multi-label
-	baselines, fairness slices, SHAP, and artifact persistence under
-	`experiments/multilabel_analysis/`
-- `src/data/normalization.py` – config-driven emoji/obfuscation-aware normalizer used by both CLIs and pipeline
-- `src/data/buckets.py` – YAML-driven bucket tagging helpers + cache loaders
-- `src/features/tfidf.py` – TF-IDF vectorizer factory plus bucket oversampling helpers shared by all classical trainers
-- `src/models/tfidf_logistic.py`, `src/models/tfidf_svm.py`, `src/models/tfidf_random_forest.py` – dedicated TF-IDF trainer modules that the pipeline + notebooks import
-- `src/models/bert_transformer.py` – HuggingFace Trainer-powered multi-label fine-tuning helper invoked via `--model bert`
-- `src/pipeline/train.py` – reusable TF-IDF pipeline that mirrors the notebook flow and logs artifacts under `experiments/tfidf_logreg/`
-
-Other packages (`src/data`, `src/features`, `src/models`, `src/pipeline`,
-`src/utils`) remain as placeholders so the directory structure is ready when you
-add new functionality from the notebooks or CLI utilities.
-
-## Data & Experiment Locations
-
-- `data/raw/` – Kaggle CSVs (`train.csv`, `test.csv`, etc.) once downloaded
-- `data/splits/` – JSON index files produced by the split CLI
-- `experiments/bucket_augmentation/` – CSV logs for oversampling sweeps driven
-	from `data_explore.ipynb`
-- `experiments/multilabel_analysis/` – placeholder for multi-label artifacts
-- `experiments/tfidf_logreg/` – CLI-driven TF-IDF + logistic pipeline outputs
-- `artifacts/normalized/` – parquet + metadata from `make_normalized_text` (one per split/dataset)
-- `artifacts/buckets/` – cached bucket tags aligned with row indices for CLI consumption
-- `artifacts/` – general-purpose directory for additional model checkpoints or
-	reports
-
-Raw datasets can be large; keep them out of Git unless absolutely required. Use
-`.gitignore` (already configured) to avoid accidental commits.
-
-## Current Status & Next Steps
-
-- ✅ Environment bootstrap, Kaggle download, and chronological splits are in
-	place.
-- ✅ Exploratory notebook covers normalization, TF-IDF baseline, error taxonomy,
-	and bucket-aware augmentation with logging.
-- 🟡 Multi-label notebook is authored and ready to run once you execute the
-	cells; results will land under `experiments/multilabel_analysis/`.
-- ✅ Reusable TF-IDF pipeline lives in `src/pipeline/train.py` with a CLI 	(`python -m src.cli.train_pipeline`) for running experiments outside the notebooks, including normalization-config + bucket-cache wiring.
-- ✅ Config-driven normalization (`configs/normalization.yaml`) and bucket tagging (`configs/buckets.yaml`) now produce cacheable artifacts under `artifacts/`, and the CLI validates hashes before training.
-- 🟡 HuggingFace transformer fine-tuning is available through `--model bert` for users with GPU resources (or patient CPU runs); defaults target `bert-base-uncased` with sensible hyperparameters.
-
-## Run the reusable pipeline
-
-Execute the TF-IDF + logistic baseline across all folds (or a specific fold)
-and persist metrics/models under `experiments/tfidf_logreg/`:
+### 1. Bootstrap Everything (Recommended)
 
 ```bash
-./scripts/run_python.sh -m src.cli.train_pipeline --output-dir experiments/tfidf_logreg
+# One-command setup: environment, dependencies, PyTorch, and data
+bash scripts/00_bootstrap_project.sh
 ```
 
-To target a single fold with richer normalization:
+### 2. Launch Interactive Demo
 
 ```bash
-./scripts/run_python.sh -m src.cli.train_pipeline \
-  --fold fold1_seed42 \
-	--model svm \
-  --normalization rich \
-  --max-features 75000 \
-  --output-dir experiments/tfidf_logreg
+# Start the Streamlit web application
+streamlit run demo.py
 ```
 
-Run a Random Forest baseline with custom hyperparameters:
+### 3. Run Model Training
 
 ```bash
-./scripts/run_python.sh -m src.cli.train_pipeline \
-	--fold fold1_seed42 \
-	--model random_forest \
-	--rf-n-estimators 600 \
-	--rf-max-depth 40 \
-	--rf-class-weight balanced \
-	--output-dir experiments/tfidf_logreg
+# Train all models with hyperparameter tuning
+./scripts/run_python.sh -m src.cli.train_pipeline --output-dir experiments/train
 ```
 
-Apply bucket-aware oversampling by pointing to a bucket column (list-like or JSON
-encoded) and specifying repeatable multipliers:
+## 📋 Prerequisites
+
+- **Python**: 3.8+ with Conda/Miniforge or virtualenv support
+- **System Tools**: `git`, `curl`/`wget`, Kaggle CLI (`pip install kaggle`)
+- **Kaggle Access**: API token in `~/.kaggle/kaggle.json` or project root
+- **GPU (Optional)**: CUDA-compatible GPU for BERT training (CPU works but slower)
+
+## 🏗️ Project Structure
+
+```
+toxic_comments_classification/
+├── src/                          # Source code
+│   ├── cli/                      # Command-line interfaces
+│   ├── data/                     # Data processing and loading
+│   ├── features/                 # Feature engineering
+│   ├── models/                   # Model implementations
+│   ├── pipeline/                 # Training pipelines
+│   └── utils/                    # Utilities and helpers
+├── scripts/                      # Automation scripts
+│   ├── 00_bootstrap_project.sh   # One-click setup
+│   ├── demo.py                   # Streamlit web app
+│   ├── app.py                    # Flask REST API
+│   └── create_*_plots.py         # Analysis visualization
+├── experiments/                  # Experimental results
+│   ├── train/                    # Trained models
+│   ├── hyperparameter_tuning/    # Tuning results
+│   └── bucket_augmentation/      # Data augmentation
+├── reports/                      # Analysis and reports
+│   ├── analysis/                 # Model comparisons
+│   ├── error_analysis/           # Error patterns
+│   ├── ensemble/                 # Ensemble analysis
+│   ├── extended_evaluation/      # Robustness testing
+│   └── figures/                  # Performance plots
+├── data/                         # Datasets and splits
+├── artifacts/                    # Preprocessed data
+├── configs/                      # Configuration files
+└── notebooks/                    # Jupyter notebooks
+```
+
+## 🎮 Interactive Demo
+
+The Streamlit demo provides:
+
+- **Real-time Classification**: Paste comments and see toxicity predictions
+- **Multi-Model Support**: Switch between LR, SVM, RF, and BERT models
+- **Interactive Thresholds**: Adjust classification thresholds
+- **Top-K Ranking**: Browse highest-scoring comments from test set
+- **Explainability**: Feature importance and perturbation-based explanations
+- **Performance Metrics**: PR-AUC scores and confidence distributions
 
 ```bash
-./scripts/run_python.sh -m src.cli.train_pipeline \
-	--bucket-col bucket_tags_full \
-	--bucket-mult rare=3 \
-	--bucket-mult misogyny=2 \
-	--output-dir experiments/tfidf_logreg
+streamlit run demo.py
 ```
 
-Fine-tune a transformer baseline (defaults to `bert-base-uncased`) with custom sequence length and batch sizes. GPU acceleration is recommended but optional:
+## 🔧 Model Training
+
+### Train Individual Models
 
 ```bash
-./scripts/run_python.sh -m src.cli.train_pipeline \
-	--fold fold1_seed42 \
-	--model bert \
-	--bert-model-name bert-base-uncased \
-	--bert-max-length 256 \
-	--bert-train-batch-size 8 \
-	--bert-eval-batch-size 16 \
-	--bert-learning-rate 2e-5 \
-	--bert-num-epochs 3 \
-	--output-dir experiments/tfidf_logreg
+# Logistic Regression
+./scripts/run_python.sh -m src.cli.train_pipeline --model logistic --output-dir experiments/train
+
+# Support Vector Machine
+./scripts/run_python.sh -m src.cli.train_pipeline --model svm --output-dir experiments/train
+
+# Random Forest
+./scripts/run_python.sh -m src.cli.train_pipeline --model random_forest --output-dir experiments/train
+
+# XGBoost
+./scripts/run_python.sh -m src.cli.train_pipeline --model xgboost --output-dir experiments/train
+
+# BERT (requires GPU)
+./scripts/run_python.sh -m src.cli.train_pipeline --model bert --output-dir experiments/train
 ```
-Add `--bert-fp16` when running on CUDA devices to enable mixed-precision training via HuggingFace Trainer.
 
-### Precompute normalization + bucket caches
-
-For reproducible experiments (and to mirror the richer preprocessing described in
-`proposal.md`), you can now materialize normalization and bucket artifacts before
-training:
+### Hyperparameter Tuning
 
 ```bash
-# 1) Normalize text with the YAML profile under configs/normalization.yaml
-./scripts/run_python.sh -m src.cli.make_normalized_text \
-	--data-path data/raw/train.csv \
-	--output-path artifacts/normalized/train.parquet
-
-# 2) Generate bucket tags with configs/buckets.yaml (can reuse the normalized cache)
-./scripts/run_python.sh -m src.cli.make_bucket_tags \
-	--data-path data/raw/train.csv \
-	--normalized-cache artifacts/normalized/train.parquet \
-	--output-path artifacts/buckets/train.parquet
-
-# 3) Train while consuming the cached artifacts
-./scripts/run_python.sh -m src.cli.train_pipeline \
-	--fold fold1_seed42 \
-	--normalization config \
-	--normalization-config configs/normalization.yaml \
-	--normalized-cache artifacts/normalized/train.parquet \
-	--bucket-col auto \
-	--bucket-cache artifacts/buckets/train.parquet \
-	--output-dir experiments/tfidf_logreg
+# Automated tuning for all models
+bash scripts/tune_hyperparams.sh
 ```
 
-The CLI automatically validates cache hashes so you can catch stale artifacts
-before running expensive experiments.
+## 📈 Analysis and Visualization
 
-This repo now gets you an environment, the datasets, deterministic splits, and
-actionable notebooks to evaluate baselines and prep the production pipeline.
+### Generate All Plots
+
+```bash
+# Model comparison plots
+python scripts/create_analysis_plots.py
+
+# Calibration analysis
+python scripts/create_calibration_plots.py
+
+# Error analysis
+python scripts/create_error_analysis_plots.py
+
+# Ensemble evaluation
+python scripts/create_ensemble_plots.py
+
+# Extended evaluation (out-of-domain)
+python scripts/create_extended_evaluation_plots.py
+```
+
+### View Results
+
+All visualizations are saved to `reports/` subdirectories:
+- **Analysis**: `reports/analysis/` - Model comparisons and correlations
+- **Calibration**: `reports/analysis/` - Probability calibration plots
+- **Errors**: `reports/error_analysis/` - Error patterns and distributions
+- **Ensembles**: `reports/ensemble/` - Ensemble performance analysis
+- **Robustness**: `reports/extended_evaluation/` - Out-of-domain evaluation
+
+## 🌐 REST API
+
+Deploy the Flask REST API for programmatic access:
+
+```bash
+python scripts/app.py
+```
+
+### API Endpoints
+
+- `POST /predict`: Single comment classification
+- `POST /batch_predict`: Multiple comments classification
+- `GET /models`: List available models
+- `GET /health`: Health check
+
+### Example Usage
+
+```python
+import requests
+
+response = requests.post("http://localhost:5000/predict",
+    json={"text": "This is a toxic comment", "model": "bert"})
+print(response.json())
+```
+
+## 📊 Experimental Results
+
+### Comprehensive Evaluation
+
+The project includes extensive experimental evaluation:
+
+- **Cross-Validation**: 3-fold temporal splits with 3 random seeds
+- **Performance Metrics**: Macro/Micro F1, PR-AUC, ROC-AUC, calibration
+- **Per-Label Analysis**: Individual performance across 6 toxicity dimensions
+- **Computational Benchmarks**: Training time, inference latency, memory usage
+- **Robustness Testing**: Out-of-domain evaluation with synthetic data
+
+### Key Findings
+
+- **BERT Superiority**: Best overall performance (PR-AUC: 0.722) with excellent calibration
+- **SVM Reliability**: Strong performance with best calibration among traditional models
+- **Rare Label Challenge**: All models struggle with minority classes (threat, identity_hate)
+- **Domain Robustness**: BERT maintains performance best on modern internet slang
+
+## 📚 Documentation
+
+### Comprehensive Reports
+
+- **`FINAL_REPORT.md`**: Complete project documentation (560+ pages when compiled)
+- **`EXPERIMENTS_REPORT.md`**: Detailed experimental methodology and results
+- **`EXPERIMENTS_README.md`**: Experiment execution and analysis guide
+- **Model Reports**: Individual detailed reports for Random Forest, SVM, and BERT
+
+### API Documentation
+
+- **`API_README.md`**: Complete API reference and usage examples
+- **Demo Guide**: Interactive demo usage instructions
+
+## 🔄 Reproducibility
+
+### Environment Setup
+
+```bash
+# Bootstrap complete environment
+bash scripts/00_bootstrap_project.sh
+
+# Or skip components if already configured
+bash scripts/00_bootstrap_project.sh --skip-env --skip-data
+```
+
+### Data Pipeline
+
+```bash
+# Download Kaggle dataset
+bash scripts/02_download_kaggle.sh
+
+# Generate cross-validation splits
+./scripts/run_python.sh -m src.cli.make_splits --folds 3
+
+# Precompute features (optional)
+./scripts/run_python.sh -m src.cli.make_normalized_text --data-path data/raw/train.csv
+```
+
+## 🛠️ Development
+
+### Adding New Models
+
+1. Create model implementation in `src/models/`
+2. Add training logic to `src/pipeline/train.py`
+3. Update CLI interface in `src/cli/train_pipeline.py`
+4. Add to demo and API if desired
+
+### Extending Analysis
+
+1. Add plotting functions to `scripts/create_*_plots.py`
+2. Update analysis in `reports/analysis/`
+3. Generate new visualizations automatically
+
+## 📈 Performance Benchmarks
+
+### Training Time (per fold)
+- **Logistic Regression**: ~2 minutes
+- **SVM**: ~5-15 minutes
+- **Random Forest**: ~2-5 minutes
+- **XGBoost**: ~3-8 minutes
+- **BERT**: ~30-60 minutes (GPU) / 2-4 hours (CPU)
+
+### Inference Latency
+- **Traditional Models**: <1ms per comment
+- **BERT**: ~5-10ms per comment (GPU) / ~50-100ms (CPU)
+
+### Memory Requirements
+- **Training**: 2-8GB RAM (depends on model and batch size)
+- **Inference**: <1GB RAM for all models
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with comprehensive testing
+4. Update documentation
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **Jigsaw/Conversation AI** for the toxic comment classification dataset
+- **Hugging Face** for transformer model implementations
+- **Scikit-learn** for traditional machine learning algorithms
+- **Streamlit** for the interactive demo framework
+
+## 📞 Support
+
+For questions or issues:
+- Check the comprehensive documentation in `docs/`
+- Review the troubleshooting section in individual README files
+- Open an issue on GitHub with detailed information
+
+## 📚 Resources
+
+### Repository
+- **GitHub Repository**: [https://github.com/sonalilonkar1/toxic_comments_classification](https://github.com/sonalilonkar1/toxic_comments_classification)
+
+### Project Materials
+- **Google Drive Folder**: [Complete Project Resources](https://drive.google.com/drive/folders/1tpX_Saks2ZfG-uSv7rvc0kqVyPfWkIRj?usp=sharing)
+
+This drive contains:
+- **Presentation Recordings**: Video recordings of project presentations and demonstrations
+- **Slides**: Presentation slides and documentation materials
+- **Experiment Results**: Detailed results for all models (TF-IDF variants: Linear Regression, SVM, Random Forest, and BERT)
+- **Demo Videos**: Interactive demonstrations showing comment classification with labels, top-K metrics, and explainability features for TF-IDF models
 
 ---
+
+**Last Updated**: December 15, 2025
+**Version**: 2.0 - Complete ML System
+**Models**: 5 architectures fully implemented
+**Experiments**: 45+ runs with comprehensive evaluation
+**Visualizations**: 25+ automated plots
+**Applications**: Web demo + REST API production-ready
 

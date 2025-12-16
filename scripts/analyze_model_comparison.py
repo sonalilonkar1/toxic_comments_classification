@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import json
-from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, average_precision_score
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -127,6 +127,11 @@ def analyze_model_comparison():
     
     for model_name, pred_df in predictions.items():
         metrics = {}
+        
+        # Collect per-label probabilities and true labels for macro calculations
+        all_probabilities = []
+        all_true_labels = []
+        
         for label in LABEL_COLS:
             prob_col = f"{label}_prob"
             pred_col = f"{label}_pred"
@@ -138,6 +143,10 @@ def analyze_model_comparison():
                 y_prob = pred_df[prob_col].values
                 auc = roc_auc_score(y_true, y_prob)
                 metrics[f"{label}_auc"] = auc
+                
+                # Collect for macro calculations
+                all_probabilities.append(y_prob)
+                all_true_labels.append(y_true)
             
             if pred_col in pred_df.columns and true_col in pred_df.columns:
                 # Use predictions for precision/recall/f1
@@ -148,6 +157,18 @@ def analyze_model_comparison():
                 metrics[f"{label}_precision"] = report['1']['precision']
                 metrics[f"{label}_recall"] = report['1']['recall']
                 metrics[f"{label}_f1"] = report['1']['f1-score']
+        
+        # Calculate macro-averaged metrics
+        if all_probabilities and all_true_labels:
+            # Macro PR-AUC
+            macro_pr_auc = np.mean([average_precision_score(y_true, y_prob) 
+                                   for y_true, y_prob in zip(all_true_labels, all_probabilities)])
+            metrics["macro_pr_auc"] = macro_pr_auc
+            
+            # Macro ROC-AUC  
+            macro_roc_auc = np.mean([roc_auc_score(y_true, y_prob) 
+                                    for y_true, y_prob in zip(all_true_labels, all_probabilities)])
+            metrics["macro_roc_auc"] = macro_roc_auc
         
         overall_metrics[model_name] = metrics
     
