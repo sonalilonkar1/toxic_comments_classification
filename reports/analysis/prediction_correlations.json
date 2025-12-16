@@ -1,0 +1,214 @@
+{
+  "toxic": {
+    "tfidf_logistic_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 1.0,
+      "tfidf_logistic_severe_toxic_prob": 0.4908467927613739,
+      "tfidf_svm_toxic_prob": 0.9982196425490298,
+      "tfidf_svm_severe_toxic_prob": 0.47349435645623894,
+      "tfidf_random_forest_toxic_prob": 0.8791858630538819,
+      "tfidf_random_forest_severe_toxic_prob": 0.6037815271642826,
+      "bert_toxic_prob": 0.004895261022538248,
+      "bert_severe_toxic_prob": 0.006935653799025709
+    },
+    "tfidf_logistic_severe_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.4908467927613739,
+      "tfidf_logistic_severe_toxic_prob": 1.0,
+      "tfidf_svm_toxic_prob": 0.4948180984282678,
+      "tfidf_svm_severe_toxic_prob": 0.9927706883894657,
+      "tfidf_random_forest_toxic_prob": 0.5945573401311061,
+      "tfidf_random_forest_severe_toxic_prob": 0.8086480032584903,
+      "bert_toxic_prob": 0.009477980933475566,
+      "bert_severe_toxic_prob": 0.0017980981571159935
+    },
+    "tfidf_svm_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.9982196425490298,
+      "tfidf_logistic_severe_toxic_prob": 0.4948180984282678,
+      "tfidf_svm_toxic_prob": 1.0,
+      "tfidf_svm_severe_toxic_prob": 0.4774965627892174,
+      "tfidf_random_forest_toxic_prob": 0.8755309531797304,
+      "tfidf_random_forest_severe_toxic_prob": 0.6069648210074724,
+      "bert_toxic_prob": 0.004519108421386168,
+      "bert_severe_toxic_prob": 0.00654650239411737
+    },
+    "tfidf_svm_severe_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.47349435645623894,
+      "tfidf_logistic_severe_toxic_prob": 0.9927706883894657,
+      "tfidf_svm_toxic_prob": 0.4774965627892174,
+      "tfidf_svm_severe_toxic_prob": 1.0,
+      "tfidf_random_forest_toxic_prob": 0.5733877164199768,
+      "tfidf_random_forest_severe_toxic_prob": 0.7946443156042269,
+      "bert_toxic_prob": 0.009560636904435555,
+      "bert_severe_toxic_prob": 0.002064443107857346
+    },
+    "tfidf_random_forest_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.8791858630538819,
+      "tfidf_logistic_severe_toxic_prob": 0.5945573401311061,
+      "tfidf_svm_toxic_prob": 0.8755309531797304,
+      "tfidf_svm_severe_toxic_prob": 0.5733877164199768,
+      "tfidf_random_forest_toxic_prob": 1.0,
+      "tfidf_random_forest_severe_toxic_prob": 0.7375784337675676,
+      "bert_toxic_prob": 0.005659208137780772,
+      "bert_severe_toxic_prob": 0.006892803260499353
+    },
+    "tfidf_random_forest_severe_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.6037815271642826,
+      "tfidf_logistic_severe_toxic_prob": 0.8086480032584903,
+      "tfidf_svm_toxic_prob": 0.6069648210074724,
+      "tfidf_svm_severe_toxic_prob": 0.7946443156042269,
+      "tfidf_random_forest_toxic_prob": 0.7375784337675676,
+      "tfidf_random_forest_severe_toxic_prob": 1.0,
+      "bert_toxic_prob": 0.007174109351811221,
+      "bert_severe_toxic_prob": 0.00462070978437777
+    },
+    "bert_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.004895261022538248,
+      "tfidf_logistic_severe_toxic_prob": 0.009477980933475566,
+      "tfidf_svm_toxic_prob": 0.004519108421386168,
+      "tfidf_svm_severe_toxic_prob": 0.009560636904435555,
+      "tfidf_random_forest_toxic_prob": 0.005659208137780772,
+      "tfidf_random_forest_severe_toxic_prob": 0.007174109351811221,
+      "bert_toxic_prob": 1.0,
+      "bert_severe_toxic_prob": 0.5390022377680802
+    },
+    "bert_severe_toxic_prob": {
+      "tfidf_logistic_toxic_prob": 0.006935653799025709,
+      "tfidf_logistic_severe_toxic_prob": 0.0017980981571159935,
+      "tfidf_svm_toxic_prob": 0.00654650239411737,
+      "tfidf_svm_severe_toxic_prob": 0.002064443107857346,
+      "tfidf_random_forest_toxic_prob": 0.006892803260499353,
+      "tfidf_random_forest_severe_toxic_prob": 0.00462070978437777,
+      "bert_toxic_prob": 0.5390022377680802,
+      "bert_severe_toxic_prob": 1.0
+    }
+  },
+  "severe_toxic": {
+    "tfidf_logistic_severe_toxic_prob": {
+      "tfidf_logistic_severe_toxic_prob": 1.0,
+      "tfidf_svm_severe_toxic_prob": 0.9927706883894657,
+      "tfidf_random_forest_severe_toxic_prob": 0.8086480032584903,
+      "bert_severe_toxic_prob": 0.0017980981571159935
+    },
+    "tfidf_svm_severe_toxic_prob": {
+      "tfidf_logistic_severe_toxic_prob": 0.9927706883894657,
+      "tfidf_svm_severe_toxic_prob": 1.0,
+      "tfidf_random_forest_severe_toxic_prob": 0.7946443156042269,
+      "bert_severe_toxic_prob": 0.002064443107857346
+    },
+    "tfidf_random_forest_severe_toxic_prob": {
+      "tfidf_logistic_severe_toxic_prob": 0.8086480032584903,
+      "tfidf_svm_severe_toxic_prob": 0.7946443156042269,
+      "tfidf_random_forest_severe_toxic_prob": 1.0,
+      "bert_severe_toxic_prob": 0.00462070978437777
+    },
+    "bert_severe_toxic_prob": {
+      "tfidf_logistic_severe_toxic_prob": 0.0017980981571159935,
+      "tfidf_svm_severe_toxic_prob": 0.002064443107857346,
+      "tfidf_random_forest_severe_toxic_prob": 0.00462070978437777,
+      "bert_severe_toxic_prob": 1.0
+    }
+  },
+  "obscene": {
+    "tfidf_logistic_obscene_prob": {
+      "tfidf_logistic_obscene_prob": 1.0,
+      "tfidf_svm_obscene_prob": 0.9979914426026999,
+      "tfidf_random_forest_obscene_prob": 0.9244702755250762,
+      "bert_obscene_prob": 0.005673717752423939
+    },
+    "tfidf_svm_obscene_prob": {
+      "tfidf_logistic_obscene_prob": 0.9979914426026999,
+      "tfidf_svm_obscene_prob": 1.0,
+      "tfidf_random_forest_obscene_prob": 0.9215121481816335,
+      "bert_obscene_prob": 0.005243140208983078
+    },
+    "tfidf_random_forest_obscene_prob": {
+      "tfidf_logistic_obscene_prob": 0.9244702755250762,
+      "tfidf_svm_obscene_prob": 0.9215121481816335,
+      "tfidf_random_forest_obscene_prob": 1.0,
+      "bert_obscene_prob": 0.008026581112479978
+    },
+    "bert_obscene_prob": {
+      "tfidf_logistic_obscene_prob": 0.005673717752423939,
+      "tfidf_svm_obscene_prob": 0.005243140208983078,
+      "tfidf_random_forest_obscene_prob": 0.008026581112479978,
+      "bert_obscene_prob": 1.0
+    }
+  },
+  "threat": {
+    "tfidf_logistic_threat_prob": {
+      "tfidf_logistic_threat_prob": 1.0,
+      "tfidf_svm_threat_prob": 0.9922518560761865,
+      "tfidf_random_forest_threat_prob": 0.7268439129278159,
+      "bert_threat_prob": -0.0035427023934337856
+    },
+    "tfidf_svm_threat_prob": {
+      "tfidf_logistic_threat_prob": 0.9922518560761865,
+      "tfidf_svm_threat_prob": 1.0,
+      "tfidf_random_forest_threat_prob": 0.723780562027223,
+      "bert_threat_prob": -0.003566323743888778
+    },
+    "tfidf_random_forest_threat_prob": {
+      "tfidf_logistic_threat_prob": 0.7268439129278159,
+      "tfidf_svm_threat_prob": 0.723780562027223,
+      "tfidf_random_forest_threat_prob": 1.0,
+      "bert_threat_prob": -0.002706322906948055
+    },
+    "bert_threat_prob": {
+      "tfidf_logistic_threat_prob": -0.0035427023934337856,
+      "tfidf_svm_threat_prob": -0.003566323743888778,
+      "tfidf_random_forest_threat_prob": -0.002706322906948055,
+      "bert_threat_prob": 1.0
+    }
+  },
+  "insult": {
+    "tfidf_logistic_insult_prob": {
+      "tfidf_logistic_insult_prob": 1.0,
+      "tfidf_svm_insult_prob": 0.9972079363381937,
+      "tfidf_random_forest_insult_prob": 0.8874544890119275,
+      "bert_insult_prob": 0.0015391706779903183
+    },
+    "tfidf_svm_insult_prob": {
+      "tfidf_logistic_insult_prob": 0.9972079363381937,
+      "tfidf_svm_insult_prob": 1.0,
+      "tfidf_random_forest_insult_prob": 0.8803476298136803,
+      "bert_insult_prob": 0.0005352415978130285
+    },
+    "tfidf_random_forest_insult_prob": {
+      "tfidf_logistic_insult_prob": 0.8874544890119275,
+      "tfidf_svm_insult_prob": 0.8803476298136803,
+      "tfidf_random_forest_insult_prob": 1.0,
+      "bert_insult_prob": 0.0065493498984871236
+    },
+    "bert_insult_prob": {
+      "tfidf_logistic_insult_prob": 0.0015391706779903183,
+      "tfidf_svm_insult_prob": 0.0005352415978130285,
+      "tfidf_random_forest_insult_prob": 0.0065493498984871236,
+      "bert_insult_prob": 1.0
+    }
+  },
+  "identity_hate": {
+    "tfidf_logistic_identity_hate_prob": {
+      "tfidf_logistic_identity_hate_prob": 1.0,
+      "tfidf_svm_identity_hate_prob": 0.9936272221322263,
+      "tfidf_random_forest_identity_hate_prob": 0.7739473229077027,
+      "bert_identity_hate_prob": -0.0019170276102688404
+    },
+    "tfidf_svm_identity_hate_prob": {
+      "tfidf_logistic_identity_hate_prob": 0.9936272221322263,
+      "tfidf_svm_identity_hate_prob": 1.0,
+      "tfidf_random_forest_identity_hate_prob": 0.7621066212902641,
+      "bert_identity_hate_prob": -0.001818792523400268
+    },
+    "tfidf_random_forest_identity_hate_prob": {
+      "tfidf_logistic_identity_hate_prob": 0.7739473229077027,
+      "tfidf_svm_identity_hate_prob": 0.7621066212902641,
+      "tfidf_random_forest_identity_hate_prob": 1.0,
+      "bert_identity_hate_prob": -0.00308773735560721
+    },
+    "bert_identity_hate_prob": {
+      "tfidf_logistic_identity_hate_prob": -0.0019170276102688404,
+      "tfidf_svm_identity_hate_prob": -0.001818792523400268,
+      "tfidf_random_forest_identity_hate_prob": -0.00308773735560721,
+      "bert_identity_hate_prob": 1.0
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "generated_at": "2025-12-14T01:47:33.527135",
+  "evaluation_type": "extended_evaluation",
+  "sections": {
+    "out_of_domain_evaluation": {
+      "description": "Evaluation on synthetic modern internet slang data",
+      "results": {
+        "toxic": {
+          "auc": 0.85,
+          "precision": 1.0,
+          "recall": 0.7,
+          "f1": 0.8235294117647058,
+          "support": 10.0
+        },
+        "severe_toxic": {
+          "auc": 0.6862745098039215,
+          "precision": 0.2857142857142857,
+          "recall": 0.6666666666666666,
+          "f1": 0.4,
+          "support": 3.0
+        },
+        "obscene": {
+          "auc": NaN,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 0.0
+        },
+        "threat": {
+          "auc": 0.6862745098039215,
+          "precision": 0.2857142857142857,
+          "recall": 0.6666666666666666,
+          "f1": 0.4,
+          "support": 3.0
+        },
+        "insult": {
+          "auc": 0.75,
+          "precision": 0.42857142857142855,
+          "recall": 0.75,
+          "f1": 0.5454545454545454,
+          "support": 4.0
+        },
+        "identity_hate": {
+          "auc": 0.8421052631578947,
+          "precision": 0.14285714285714285,
+          "recall": 1.0,
+          "f1": 0.25,
+          "support": 1.0
+        }
+      }
+    },
+    "temporal_trends": {
+      "description": "Analysis of toxicity patterns by comment characteristics",
+      "results": {
+        "short_comments": {
+          "toxic_rate": 0.13795379537953795,
+          "count": 1515
+        },
+        "long_comments": {
+          "toxic_rate": 0.08171928893605732,
+          "count": 22614
+        },
+        "question_comments": {
+          "toxic_rate": 0.09874213836477988,
+          "count": 1590
+        },
+        "exclamation_comments": {
+          "toxic_rate": 0.19247886070315978,
+          "count": 4494
+        }
+      }
+    },
+    "user_behavior": {
+      "description": "Analysis of user toxicity behavior patterns",
+      "results": {
+        "multilabel_toxicity": {
+          "single_toxic": 1287,
+          "multi_toxic": 1969,
+          "total_toxic": 3256,
+          "single_toxic_pct": 0.3952702702702703,
+          "multi_toxic_pct": 0.6047297297297297
+        },
+        "toxicity_intensity": {
+          "low_intensity": 1287,
+          "medium_intensity": 1529,
+          "high_intensity": 440
+        },
+        "common_patterns": []
+      }
+    },
+    "dataset_statistics": {
+      "description": "Overall statistics of the validation dataset",
+      "total_comments": 31915,
+      "toxic_comments": 3256,
+      "toxicity_rate": 0.10202099326335579,
+      "avg_toxicity_labels_per_comment": 0.2200532664891117
+    }
+  }
+}

@@ -40,17 +40,19 @@ def load_model_metrics(experiments_dir: Path, model_name: str) -> Dict:
         with open(summary_path, "r") as f:
             summary = json.load(f)
     else:
-        # For BERT, load from each fold's summary_metrics.json
+        # For BERT, load from nested directory structure
         summary = {}
         for fold_dir in sorted(model_dir.iterdir()):
-            if fold_dir.is_dir():
-                fold_summary_path = fold_dir / "summary_metrics.json"
-                if fold_summary_path.exists():
-                    with open(fold_summary_path, "r") as f:
-                        fold_summary = json.load(f)
-                    # fold_summary is {fold_name: metrics}, but since it's per fold, take the value
-                    fold_name = list(fold_summary.keys())[0]
-                    summary[fold_name] = fold_summary[fold_name]
+            if fold_dir.is_dir() and fold_dir.name.startswith('fold'):
+                # Find the timestamped subdirectory within each fold
+                timestamp_dirs = sorted([d for d in fold_dir.iterdir() if d.is_dir() and not d.name.startswith('.')], 
+                                       key=lambda x: x.name, reverse=True)
+                if timestamp_dirs:
+                    fold_summary_path = timestamp_dirs[0] / "overall_metrics.json"
+                    if fold_summary_path.exists():
+                        with open(fold_summary_path, "r") as f:
+                            fold_metrics = json.load(f)
+                        summary[fold_dir.name] = fold_metrics
     
     if not summary:
         return {}
@@ -78,7 +80,18 @@ def load_per_label_metrics(experiments_dir: Path, model_name: str) -> pd.DataFra
         fold_dirs = sorted([d for d in model_dir.glob("fold*-*naive_bayes*") if d.is_dir()])
     else:
         model_dir = experiments_dir / model_name
-        fold_dirs = sorted(model_dir.glob("fold*"))
+        if model_name == "bert":
+            # For BERT, find per_label_metrics.csv in nested directories
+            fold_dirs = []
+            for fold_dir in sorted(model_dir.glob("fold*")):
+                if fold_dir.is_dir():
+                    # Find the timestamped subdirectory
+                    timestamp_dirs = sorted([d for d in fold_dir.iterdir() if d.is_dir() and not d.name.startswith('.')], 
+                                           key=lambda x: x.name, reverse=True)
+                    if timestamp_dirs:
+                        fold_dirs.append(timestamp_dirs[0])
+        else:
+            fold_dirs = sorted(model_dir.glob("fold*"))
     
     all_per_label = []
     for fold_dir in fold_dirs:
@@ -223,10 +236,20 @@ def plot_pr_curves(model_name: str, experiments_dir: Path, output_dir: Path):
     # Find all fold directories
     if model_name.startswith("tfidf_"):
         model_dir = experiments_dir / model_name
+        fold_dirs = sorted([d for d in model_dir.glob("fold*") if d.is_dir()])
     else:
-        model_dir = experiments_dir / model_name  # For others
-    
-    fold_dirs = sorted([d for d in model_dir.glob("fold*") if d.is_dir()])
+        model_dir = experiments_dir / model_name
+        if model_name == "bert":
+            # For BERT, find the timestamped subdirectories within fold directories
+            fold_dirs = []
+            for fold_dir in sorted(model_dir.glob("fold*")):
+                if fold_dir.is_dir():
+                    timestamp_dirs = sorted([d for d in fold_dir.iterdir() if d.is_dir() and not d.name.startswith('.')], 
+                                           key=lambda x: x.name, reverse=True)
+                    if timestamp_dirs:
+                        fold_dirs.append(timestamp_dirs[0])
+        else:
+            fold_dirs = sorted([d for d in model_dir.glob("fold*") if d.is_dir()])
     if not fold_dirs:
         print(f"⚠️  No fold directories found for {model_name}")
         return

@@ -1,0 +1,189 @@
+{
+  "generated_at": "2025-12-14T01:50:23.307041",
+  "shap_available": true,
+  "plotting_available": true,
+  "analyses": {
+    "tfidf_interpretability": {
+      "top_toxic_features": [
+        [
+          "word__you",
+          0.03494406845566772
+        ],
+        [
+          "word__fuck",
+          0.02736528626529278
+        ],
+        [
+          "char__uck",
+          0.02567795460426547
+        ],
+        [
+          "word__fuck you",
+          0.023819292529363767
+        ],
+        [
+          "char__fuck",
+          0.021730160868693612
+        ],
+        [
+          "char__fuc",
+          0.02165256266490692
+        ],
+        [
+          "char__you",
+          0.020894939007277576
+        ],
+        [
+          "char__ you",
+          0.020346792330570927
+        ],
+        [
+          "char__ fuck",
+          0.020035782351994193
+        ],
+        [
+          "char__ fuc",
+          0.020000383547910557
+        ],
+        [
+          "char__ yo",
+          0.01999797012223603
+        ],
+        [
+          "char__ck ",
+          0.01946779400895151
+        ],
+        [
+          "char__!!!!!",
+          0.019254559994071618
+        ],
+        [
+          "word__are",
+          0.019144156554346696
+        ],
+        [
+          "char__uck ",
+          0.01888404157768955
+        ],
+        [
+          "char__!!!!",
+          0.01849308956061471
+        ],
+        [
+          "word__freaky",
+          0.018221871621108377
+        ],
+        [
+          "char__!!!",
+          0.017695486488433533
+        ],
+        [
+          "word__don",
+          0.01663719200527477
+        ],
+        [
+          "word__asshole",
+          0.016451555059646215
+        ]
+      ],
+      "top_clean_features": [
+        [
+          "char__ th",
+          0.028493948124946846
+        ],
+        [
+          "word__the",
+          0.02742460315399947
+        ],
+        [
+          "char__the",
+          0.02085820724346571
+        ],
+        [
+          "char__ the",
+          0.01906574226781791
+        ],
+        [
+          "word__to",
+          0.016327396300095172
+        ],
+        [
+          "char__he ",
+          0.015643994291036467
+        ],
+        [
+          "word__talk",
+          0.015265084178553996
+        ],
+        [
+          "word__it",
+          0.01492836412227025
+        ],
+        [
+          "char__on ",
+          0.01469955785745386
+        ],
+        [
+          "char__ the ",
+          0.014611443677009582
+        ],
+        [
+          "char__ion",
+          0.014278419853937555
+        ],
+        [
+          "char__the ",
+          0.014256149960843574
+        ],
+        [
+          "word__but",
+          0.01338644304983729
+        ],
+        [
+          "char__her",
+          0.013330800714563884
+        ],
+        [
+          "word__thanks",
+          0.013257015648261875
+        ],
+        [
+          "word__on",
+          0.01320091607897149
+        ],
+        [
+          "word__was",
+          0.01255088698464995
+        ],
+        [
+          "word__here",
+          0.012147789639704651
+        ],
+        [
+          "word__if",
+          0.011854643729109144
+        ],
+        [
+          "word__here to",
+          0.011255796932838204
+        ]
+      ],
+      "sample_size": 100
+    },
+    "bert_interpretability": {
+      "error": "text input must be of type `str` (single example), `list[str]` (batch or single pretokenized example) or `list[list[str]]` (batch of pretokenized examples)."
+    },
+    "comparative_insights": {
+      "model_comparison": {
+        "tfidf_strengths": "Identifies specific toxic words and phrases",
+        "bert_strengths": "Understands context and nuanced language patterns",
+        "complementary": "TF-IDF good for explicit toxic words, BERT good for implicit toxicity"
+      },
+      "practical_applications": [
+        "Use TF-IDF for fast, interpretable filtering of obvious toxic content",
+        "Use BERT for nuanced content moderation requiring context understanding",
+        "Combine both for robust multi-stage toxicity detection"
+      ]
+    }
+  }
+}

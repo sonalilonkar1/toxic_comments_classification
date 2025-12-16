@@ -1,0 +1,31 @@
+{
+  "total_models": 4,
+  "total_ensembles": 5,
+  "improvement_stats": {
+    "probability_mean": {
+      "avg_improvement": -0.058771200031600045,
+      "max_improvement": -0.02681262993362532,
+      "min_improvement": -0.10650426274919789
+    },
+    "probability_median": {
+      "avg_improvement": -0.3030211281864791,
+      "max_improvement": -0.2763460983248812,
+      "min_improvement": -0.3229348394800151
+    },
+    "voting_majority": {
+      "avg_improvement": -0.058771200031600045,
+      "max_improvement": -0.02681262993362532,
+      "min_improvement": -0.10650426274919789
+    },
+    "voting_unanimous": {
+      "avg_improvement": -0.058771200031600045,
+      "max_improvement": -0.02681262993362532,
+      "min_improvement": -0.10650426274919789
+    },
+    "weighted_ensemble": {
+      "avg_improvement": -0.020699102263928976,
+      "max_improvement": -0.012349024438137235,
+      "min_improvement": -0.029768511655078767
+    }
+  }
+}

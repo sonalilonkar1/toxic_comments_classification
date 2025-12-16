@@ -1,0 +1,53 @@
+{
+  "analysis_timestamp": "2025-12-15T10:55:55.016864",
+  "validation_data_size": 31915,
+  "models_analyzed": [
+    "tfidf_logistic",
+    "tfidf_svm",
+    "tfidf_random_forest",
+    "bert"
+  ],
+  "labels_analyzed": [
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate"
+  ],
+  "data_source": "cross_validation_predictions",
+  "key_findings": [],
+  "best_models_by_auc": [
+    {
+      "Model": "Bert",
+      "Label": "Identity Hate",
+      "AUC": 0.9884822245515862
+    },
+    {
+      "Model": "Bert",
+      "Label": "Insult",
+      "AUC": 0.9890690673246821
+    },
+    {
+      "Model": "Bert",
+      "Label": "Obscene",
+      "AUC": 0.9947245003812971
+    },
+    {
+      "Model": "Bert",
+      "Label": "Severe Toxic",
+      "AUC": 0.9915029722058588
+    },
+    {
+      "Model": "Bert",
+      "Label": "Threat",
+      "AUC": 0.9919005857144353
+    },
+    {
+      "Model": "Bert",
+      "Label": "Toxic",
+      "AUC": 0.9881396319554303
+    }
+  ],
+  "total_predictions_analyzed": 127660
+}
