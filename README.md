@@ -2,6 +2,15 @@
 
 A comprehensive, production-ready toxic comment classification system implementing multiple machine learning approaches with extensive evaluation, interpretability, and deployment capabilities.
 
+## 🎥 Demo (Recorded)
+Google Drive video walkthrough:  
+[![Demo Video](https://img.shields.io/badge/Demo-Video-blue)](https://drive.google.com/file/d/1kCOCLoG7_9I9J2Jc34cfSI-xRd8EIQHo/view?usp=drive_link)
+
+Quick reviewer path:
+1) Watch the demo (1–2 min)  
+2) Check results table below  
+3) Run locally: `bash scripts/00_bootstrap_project.sh` then `streamlit run demo.py`
+
 ## 🎯 Key Features
 
 - **5 Model Architectures**: Logistic Regression, SVM, Random Forest, XGBoost, and BERT
